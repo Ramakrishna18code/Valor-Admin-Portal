@@ -1,5 +1,7 @@
 package com.valor.security;
 
+import com.valor.store.RecordStore;
+
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -14,19 +16,22 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
-    public JwtAuthenticationFilter(JwtService jwtService) { this.jwtService = jwtService; }
+    private final RecordStore store;
+    public JwtAuthenticationFilter(JwtService jwtService, RecordStore store) { this.jwtService = jwtService; this.store = store; }
 
     @Override protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain) throws ServletException, IOException {
         String header = request.getHeader("Authorization");
         if (header != null && header.startsWith("Bearer ")) {
             try {
                 Claims claims = jwtService.claims(header.substring(7));
-                String role = String.valueOf(claims.get("role", String.class));
+                String role = claims.get("role", String.class);
                 role = role == null ? "" : role.trim().toUpperCase(Locale.ROOT).replaceFirst("^ROLE_", "");
+                if (!Set.of("ADMIN", "SUPER_ADMIN").contains(role) && isAdminSubject(claims.getSubject())) role = "ADMIN";
                 var auth = new UsernamePasswordAuthenticationToken(claims.getSubject(), null, List.of(new SimpleGrantedAuthority("ROLE_" + role)));
                 auth.setDetails(claims);
                 SecurityContextHolder.getContext().setAuthentication(auth);
@@ -37,5 +42,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
         }
         chain.doFilter(request, response);
+    }
+
+    private boolean isAdminSubject(String subject) {
+        return subject != null && store.list("admins").stream().anyMatch(admin -> subject.equalsIgnoreCase(String.valueOf(admin.get("email"))));
     }
 }
