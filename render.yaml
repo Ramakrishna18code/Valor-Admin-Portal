@@ -11,5 +11,3 @@ services:
         generateValue: true
       - key: VALOR_CORS_ORIGINS
         value: https://valor-admin-portal.onrender.com
-      - key: VALOR_OTP_DEV_MODE
-        value: "true"

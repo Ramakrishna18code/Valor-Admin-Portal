@@ -6,7 +6,7 @@ Valor Admin Portal is a responsive operations workspace for Valor Lift Services.
 
 - Frontend: React, Vite, Lucide icons, responsive CSS
 - Backend: Java 21, Spring Boot 3.3, Spring Security, JWT, H2/MySQL-compatible persistence
-- Authentication: password login followed by six-digit OTP verification
+- Authentication: email/password login with JWT
 - Default local ports: frontend `5173`, backend `8081`
 
 ## Project structure
@@ -42,7 +42,7 @@ Install frontend dependencies:
 npm install
 ```
 
-Start the backend from the repository root. The safe script uses port `8081` and enables local OTP display:
+Start the backend from the repository root:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\start-backend-safe.ps1
@@ -63,7 +63,6 @@ Open `http://localhost:5173`.
 - Email: `admin@valor.com`
 - Password: `Admin@123`
 
-When local OTP development mode is enabled, the OTP is printed in the backend terminal and shown in the local development login screen. The frontend only displays the `DEV ONLY OTP` banner when running a Vite development build and the backend explicitly returns a development OTP. Never enable this mode in production.
 
 Additional seeded admin account:
 
@@ -111,7 +110,7 @@ Settings can be loaded and saved through the backend. The page includes:
 - Default visit duration and maintenance reminders
 - Session timeout and emergency response target
 - Email and SMS notifications
-- Required OTP verification
+- JWT-authenticated admin access
 - Automatic service-request assignment
 
 ### Global controls
@@ -139,7 +138,6 @@ PORT=8081
 VALOR_JWT_SECRET=replace-with-a-long-random-secret
 VALOR_JWT_EXPIRATION_HOURS=12
 VALOR_CORS_ORIGINS=http://localhost:5173,http://localhost:4173
-VALOR_OTP_DEV_MODE=true
 SPRING_DATASOURCE_URL=jdbc:h2:file:./data/valor;MODE=MySQL;AUTO_SERVER=TRUE
 ```
 
@@ -147,7 +145,6 @@ For production:
 
 - Set a long random `VALOR_JWT_SECRET`.
 - Set `VALOR_CORS_ORIGINS` to the exact deployed frontend origin(s).
-- Set `VALOR_OTP_DEV_MODE=false`.
 - Use a persistent database location or MySQL connection.
 - Serve the application through HTTPS.
 - Change all seeded passwords before exposing the application publicly.
@@ -176,7 +173,6 @@ Set deployment environment variables before starting the backend. Build the fron
 Authentication:
 
 - `POST /api/admin/auth/login`
-- `POST /api/admin/auth/verify-otp`
 - `GET /api/admin/auth/me`
 
 Operations:
@@ -210,7 +206,7 @@ DELETE /api/{resource}/{id}
    localStorage.removeItem('valor_access_token')
    ```
 
-2. Sign in again and complete OTP verification.
+2. Sign in again.
 3. Confirm the account role is `ADMIN` or `SUPER_ADMIN`.
 4. Confirm the deployed frontend was built with the correct `VITE_API_BASE_URL`.
 5. Confirm the backend `VALOR_CORS_ORIGINS` contains the deployed frontend origin.
@@ -221,10 +217,6 @@ The backend normalizes both `ADMIN`/`SUPER_ADMIN` and `ROLE_ADMIN`/`ROLE_SUPER_A
 ### Backend appears offline
 
 Check port `8081`, start the backend script, and confirm that `http://localhost:8081/api/admin/auth/login` is reachable. If using another port, update both `PORT` and `VITE_API_BASE_URL`.
-
-### OTP is not visible
-
-Use the local safe backend script. The OTP appears in that terminal and in the local development login banner. Production OTP delivery requires a configured security provider; production must not use the development OTP mode.
 
 ## Verification commands
 

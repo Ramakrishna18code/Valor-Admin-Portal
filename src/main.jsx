@@ -105,33 +105,23 @@ function App() {
 function LoginScreen({ onLogin }) {
   const [email, setEmail] = useState('admin@valor.com');
   const [password, setPassword] = useState('Admin@123');
-  const [otp, setOtp] = useState('');
-  const [devOtp, setDevOtp] = useState('');
-  const [challengeId, setChallengeId] = useState('');
-  const [step, setStep] = useState('password');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const submitPassword = async (event) => {
     event.preventDefault(); setLoading(true); setError('');
-    try { const data = await authApi.login({ email, password }); setChallengeId(data.challengeId); setDevOtp(data.devOtp || ''); setStep('otp'); }
-    catch (err) { setError(err instanceof TypeError ? 'Valor backend is unavailable. Please try again shortly.' : (err.message || 'Unable to start secure sign in.')); }
-    finally { setLoading(false); }
-  };
-  const submitOtp = async (event) => {
-    event.preventDefault(); setLoading(true); setError('');
-    try { const data = await authApi.verifyOtp({ challengeId, otp }); session.token = data.accessToken; onLogin(data); }
-    catch (err) { setError(err.message || 'The OTP could not be verified.'); }
+    try { const data = await authApi.login({ email, password }); session.token = data.accessToken; onLogin(data); }
+    catch (err) { setError(err instanceof TypeError ? 'Valor backend is unavailable. Please try again shortly.' : (err.message || 'Unable to sign in.')); }
     finally { setLoading(false); }
   };
   return <div style={{minHeight:'100vh',display:'grid',placeItems:'center',background:'linear-gradient(135deg,#f5f7fa,#eef3fa)',padding:20}}>
-    <form onSubmit={step === 'password' ? submitPassword : submitOtp} style={{width:'100%',maxWidth:410,background:'#fff',border:'1px solid #e5eaf0',borderRadius:16,padding:'34px 32px',boxShadow:'0 18px 50px rgba(18,43,61,.1)'}}>
+    <form onSubmit={submitPassword} style={{width:'100%',maxWidth:410,background:'#fff',border:'1px solid #e5eaf0',borderRadius:16,padding:'34px 32px',boxShadow:'0 18px 50px rgba(18,43,61,.1)'}}>
       <div className="brand" style={{padding:0,height:'auto',marginBottom:30}}><div className="brand-mark"><span>V</span></div><div className="brand-copy"><strong style={{color:'#172536'}}>valor</strong><small>Lift Services</small></div></div>
-      <div className="eyebrow">SECURE ADMIN ACCESS</div><h1 style={{fontSize:25,margin:'0 0 8px',color:'#172536'}}>{step === 'password' ? 'Welcome back' : 'Verify your identity'}</h1><p style={{fontSize:12,color:'#7a8896',margin:'0 0 25px'}}>{step === 'password' ? 'Sign in to manage service operations, assets and teams.' : 'Enter the six-digit one-time code sent by your security provider.'}</p>
-      {step === 'password' ? <><label style={{display:'block',fontSize:11,color:'#526677',fontWeight:600,marginBottom:15}}>Work email<input value={email} onChange={(e)=>setEmail(e.target.value)} type="email" required style={{display:'block',width:'100%',height:42,border:'1px solid #dfe6ec',borderRadius:7,marginTop:7,padding:'0 11px',outline:0,fontSize:12}} /></label><label style={{display:'block',fontSize:11,color:'#526677',fontWeight:600,marginBottom:18}}>Password<input value={password} onChange={(e)=>setPassword(e.target.value)} type="password" required style={{display:'block',width:'100%',height:42,border:'1px solid #dfe6ec',borderRadius:7,marginTop:7,padding:'0 11px',outline:0,fontSize:12}} /></label></> : <><div style={{background:'#eef4ff',border:'1px solid #dbe6ff',borderRadius:8,padding:'11px 12px',fontSize:11,color:'#5571b5',marginBottom:10}}>Your password was accepted. The OTP expires in 5 minutes and can only be used once.</div>{devOtp && import.meta.env.DEV && <div style={{background:'#fff8e8',border:'1px solid #f2d89b',borderRadius:8,padding:'10px 12px',fontSize:12,color:'#8a641d',marginBottom:17}}>DEV ONLY OTP: <strong style={{letterSpacing:3}}>{devOtp}</strong><div style={{fontSize:10,marginTop:4}}>Visible only in local development.</div></div>}<label style={{display:'block',fontSize:11,color:'#526677',fontWeight:600,marginBottom:18}}>One-time password<input value={otp} onChange={(e)=>setOtp(e.target.value.replace(/\D/g,'').slice(0,6))} inputMode="numeric" pattern="[0-9]{6}" autoFocus required placeholder="000000" style={{display:'block',width:'100%',height:48,border:'1px solid #dfe6ec',borderRadius:7,marginTop:7,padding:'0 11px',outline:0,fontSize:22,letterSpacing:7,textAlign:'center'}} /></label></>}
+      <div className="eyebrow">SECURE ADMIN ACCESS</div><h1 style={{fontSize:25,margin:'0 0 8px',color:'#172536'}}>Welcome back</h1><p style={{fontSize:12,color:'#7a8896',margin:'0 0 25px'}}>Sign in to manage service operations, assets and teams.</p>
+      <label style={{display:'block',fontSize:11,color:'#526677',fontWeight:600,marginBottom:15}}>Work email<input value={email} onChange={(e)=>setEmail(e.target.value)} type="email" required style={{display:'block',width:'100%',height:42,border:'1px solid #dfe6ec',borderRadius:7,marginTop:7,padding:'0 11px',outline:0,fontSize:12}} /></label>
+      <label style={{display:'block',fontSize:11,color:'#526677',fontWeight:600,marginBottom:18}}>Password<input value={password} onChange={(e)=>setPassword(e.target.value)} type="password" required style={{display:'block',width:'100%',height:42,border:'1px solid #dfe6ec',borderRadius:7,marginTop:7,padding:'0 11px',outline:0,fontSize:12}} /></label>
       {error && <div style={{background:'#fff0f0',color:'#c65555',fontSize:11,padding:'10px 12px',borderRadius:7,marginBottom:15}}>{error}</div>}
-      <button type="submit" disabled={loading} className="primary-btn" style={{width:'100%',height:42}}>{loading ? 'Please wait...' : step === 'password' ? 'Continue to OTP' : 'Verify OTP and sign in'}</button>
-      {step === 'otp' && <button type="button" onClick={() => { setStep('password'); setOtp(''); setError(''); }} style={{width:'100%',marginTop:12,color:'#6f8192',fontSize:11}}>Use a different account</button>}
-      <p style={{fontSize:10,color:'#98a4ae',textAlign:'center',margin:'18px 0 0'}}>Two-step verification protects your operations workspace.</p>
+      <button type="submit" disabled={loading} className="primary-btn" style={{width:'100%',height:42}}>{loading ? 'Please wait...' : 'Sign in'}</button>
+      <p style={{fontSize:10,color:'#98a4ae',textAlign:'center',margin:'18px 0 0'}}>Password authentication protects your operations workspace.</p>
     </form>
   </div>;
 }function PageHeader({ eyebrow, title, description, action, onAction, children }) { return <div className="page-header"><div><div className="eyebrow">{eyebrow || 'OPERATIONS'}</div><h1>{title}</h1><p>{description}</p></div><div className="page-actions">{children}{action && <button className="primary-btn" onClick={onAction}><Plus size={16}/>{action}</button>}</div></div>; }

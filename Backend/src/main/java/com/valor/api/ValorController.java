@@ -9,14 +9,13 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.OffsetDateTime;
-import java.security.SecureRandom;
 import java.util.*;
 import java.util.function.Consumer;
 
 @RestController
 @RequestMapping("/api")
 public class ValorController {
-    private final RecordStore store; private final JwtService jwt; private final PasswordEncoder encoder; private final SecureRandom secureRandom = new SecureRandom(); private final boolean otpDevMode = Boolean.parseBoolean(System.getenv().getOrDefault("VALOR_OTP_DEV_MODE", "false"));
+    private final RecordStore store; private final JwtService jwt; private final PasswordEncoder encoder;
     private static final Set<String> RESOURCES = Set.of("customers","buildings","lifts","amcs","service-requests","technicians","payments","inventory","notifications","admin","roles","settings","audit","invoices","transactions","exports","schedule");
     private static final Map<String,String> TYPES = Map.of("admin","admins");
 
@@ -42,26 +41,8 @@ public class ValorController {
         String email=text(body,"email"), password=text(body,"password");
         Map<String,Object> admin=store.list("admins").stream().filter(a->email.equalsIgnoreCase(text(a,"email"))).findFirst().orElseThrow(()->unauthorized("Invalid email or password"));
         if (!Boolean.TRUE.equals(admin.get("active")) || !encoder.matches(password,text(admin,"password"))) throw unauthorized("Invalid email or password");
-        String otp=String.format("%06d",secureRandom.nextInt(1_000_000)); long challengeId=store.nextId("admin-otp-challenges");
-        Map<String,Object> challenge=new LinkedHashMap<>(); challenge.put("id",challengeId); challenge.put("challengeId",UUID.randomUUID().toString()); challenge.put("email",email.toLowerCase(Locale.ROOT)); challenge.put("otpHash",encoder.encode(otp)); challenge.put("attempts",0); challenge.put("used",false); challenge.put("expiresAt",OffsetDateTime.now().plusMinutes(5).toString()); store.save("admin-otp-challenges",challengeId,challenge);
-        if(otpDevMode) System.out.println("[Valor OTP DEV ONLY] OTP for " + email + " expires in 5 minutes: " + otp);
-        Map<String,Object> result=new LinkedHashMap<>(); result.put("otpRequired",true); result.put("challengeId",challenge.get("challengeId")); result.put("expiresInSeconds",300); result.put("deliveryChannel","configured security provider"); if(otpDevMode) result.put("devOtp",otp);
-        return ApiResponse.ok(result,"OTP verification required");
-    }
-
-    @PostMapping("/admin/auth/verify-otp")
-    public ApiResponse<Map<String,Object>> verifyAdminOtp(@RequestBody Map<String,Object> body) {
-        String challengeId=text(body,"challengeId"), otp=text(body,"otp"); if(challengeId.isBlank() || otp.length()!=6) throw bad("A valid six-digit OTP is required");
-        Map<String,Object> challenge=store.findBy("admin-otp-challenges","challengeId",challengeId).map(LinkedHashMap::new).orElseThrow(()->bad("Invalid or expired OTP challenge"));
-        if(Boolean.TRUE.equals(challenge.get("used")) || OffsetDateTime.parse(text(challenge,"expiresAt")).isBefore(OffsetDateTime.now())) throw bad("Invalid or expired OTP challenge");
-        int attempts=number(challenge,"attempts"); if(attempts>=5) throw tooMany("Too many invalid OTP attempts. Start login again.");
-        if(!encoder.matches(otp,text(challenge,"otpHash"))) { challenge.put("attempts",attempts+1); store.save("admin-otp-challenges",number(challenge,"id"),challenge); if(attempts+1>=5) throw tooMany("Too many invalid OTP attempts. Start login again."); throw unauthorized("Invalid OTP"); }
-        challenge.put("used",true); store.save("admin-otp-challenges",number(challenge,"id"),challenge);
-        Map<String,Object> admin=store.list("admins").stream().filter(a->text(a,"email").equalsIgnoreCase(text(challenge,"email"))).findFirst().orElseThrow(()->unauthorized("Admin account not found"));
-        if(!Boolean.TRUE.equals(admin.get("active"))) throw unauthorized("Admin account is disabled");
         return ApiResponse.ok(authData(admin, adminRole(admin)),"Admin login successful");
     }
-
     @GetMapping("/admin/auth/me")
     public ApiResponse<Map<String,Object>> adminMe(Authentication auth) { requireAdmin(auth); Map<String,Object> admin=store.list("admins").stream().filter(a->text(a,"email").equalsIgnoreCase(auth.getName())).findFirst().orElseGet(()->store.find("admins",Long.parseLong(auth.getName())).orElse(null)); if(admin==null) throw notFound("Admin account not found"); return ApiResponse.ok(safe(admin),"Session valid"); }
 
@@ -144,4 +125,3 @@ public class ValorController {
     private ResponseStatusException tooMany(String message){return new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,message);}
     private ResponseStatusException notFound(String message){return new ResponseStatusException(HttpStatus.NOT_FOUND,message);}
 }
-

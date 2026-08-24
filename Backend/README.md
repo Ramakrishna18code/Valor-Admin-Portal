@@ -29,6 +29,6 @@ Password: Admin@123
 The API returns the documented `{ success, message, data, timestamp, status }` wrapper. Admin JWTs are role-scoped (`ADMIN` or `SUPER_ADMIN`), passwords are BCrypt-hashed, and password fields are removed from all response DTOs. Change the seeded credentials and `VALOR_JWT_SECRET` before production use.
 
 
-## Admin OTP verification
+## Admin authentication
 
-Admin sign-in is two-step: POST /api/admin/auth/login validates the password and creates a five-minute, single-use OTP challenge. The browser must then call POST /api/admin/auth/verify-otp with the challenge ID and six-digit code before a JWT is issued. OTP values are hashed at rest, never returned to the browser, and locked after five failed attempts. Configure an email/SMS/security provider to deliver the code. For local-only testing, set VALOR_OTP_DEV_MODE=true; this prints the code to the backend console and must remain false in production.
+Admin sign-in validates the email and password, then returns a JWT for the active admin account.

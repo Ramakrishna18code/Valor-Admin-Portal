@@ -1,8 +1,7 @@
-﻿import { apiRequest } from './client';
+import { apiRequest } from './client';
 
 export const authApi = {
   login: (body) => apiRequest('/api/admin/auth/login', { method: 'POST', body: JSON.stringify(body) }),
-  verifyOtp: (body) => apiRequest('/api/admin/auth/verify-otp', { method: 'POST', body: JSON.stringify(body) }),
   me: () => apiRequest('/api/admin/auth/me')
 };
 
