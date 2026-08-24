@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: valor-admin-portal
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /
+    envVars:
+      - key: VALOR_JWT_SECRET
+        generateValue: true
+      - key: VALOR_CORS_ORIGINS
+        value: https://valor-admin-portal.onrender.com
+      - key: VALOR_OTP_DEV_MODE
+        value: "true"

@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
   Activity, AlertTriangle, ArrowDownRight, ArrowUpRight, BarChart3, Bell, Building2, CalendarDays,
@@ -114,7 +114,7 @@ function LoginScreen({ onLogin }) {
   const submitPassword = async (event) => {
     event.preventDefault(); setLoading(true); setError('');
     try { const data = await authApi.login({ email, password }); setChallengeId(data.challengeId); setDevOtp(data.devOtp || ''); setStep('otp'); }
-    catch (err) { setError(err instanceof TypeError ? 'Valor backend is offline. Start Backend on port 8080, then try again.' : (err.message || 'Unable to start secure sign in.')); }
+    catch (err) { setError(err instanceof TypeError ? 'Valor backend is unavailable. Please try again shortly.' : (err.message || 'Unable to start secure sign in.')); }
     finally { setLoading(false); }
   };
   const submitOtp = async (event) => {
