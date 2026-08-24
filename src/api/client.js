@@ -21,9 +21,10 @@ export async function apiRequest(path, options = {}) {
     window.dispatchEvent(new CustomEvent('valor:unauthorized'));
   }
   if (response.status === 403) {
-    // A 403 means the session is valid but this resource is not permitted.
-    // Do not clear the token or redirect to login for a permissions error.
-    throw new Error('Access denied for this account.');
+    // This is an admin-only portal. Require a fresh login for forbidden sessions.
+    session.clear();
+    window.dispatchEvent(new CustomEvent('valor:unauthorized'));
+    throw new Error('Your admin session is no longer valid. Please sign in again.');
   }
   if (response.status === 409) throw new Error('This change conflicts with existing data.');
   if (response.status === 429) throw new Error('Too many requests. Please try again shortly.');

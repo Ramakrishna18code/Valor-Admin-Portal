@@ -30,7 +30,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 var auth = new UsernamePasswordAuthenticationToken(claims.getSubject(), null, List.of(new SimpleGrantedAuthority("ROLE_" + role)));
                 auth.setDetails(claims);
                 SecurityContextHolder.getContext().setAuthentication(auth);
-            } catch (Exception ignored) { /* Invalid tokens are handled by the security entry point. */ }
+            } catch (Exception ignored) {
+                SecurityContextHolder.clearContext();
+                response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
+                return;
+            }
         }
         chain.doFilter(request, response);
     }
