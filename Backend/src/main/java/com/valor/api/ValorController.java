@@ -59,7 +59,7 @@ public class ValorController {
         challenge.put("used",true); store.save("admin-otp-challenges",number(challenge,"id"),challenge);
         Map<String,Object> admin=store.list("admins").stream().filter(a->text(a,"email").equalsIgnoreCase(text(challenge,"email"))).findFirst().orElseThrow(()->unauthorized("Admin account not found"));
         if(!Boolean.TRUE.equals(admin.get("active"))) throw unauthorized("Admin account is disabled");
-        return ApiResponse.ok(authData(admin),"Admin login successful");
+        return ApiResponse.ok(authData(admin, adminRole(admin)),"Admin login successful");
     }
 
     @GetMapping("/admin/auth/me")
@@ -110,7 +110,25 @@ public class ValorController {
     @GetMapping("/customers/{id}/service-requests") public ApiResponse<List<Map<String,Object>>> customerJobs(@PathVariable long id,Authentication auth){requireAdmin(auth);return ApiResponse.ok(store.list("service-requests").stream().filter(j->String.valueOf(id).equals(String.valueOf(j.get("customerId")))).map(this::safe).toList(),"Customer service history loaded");}
 
     private ApiResponse<Map<String,Object>> notificationState(long id,String state,String field,Authentication auth){requireAdmin(auth);Map<String,Object> item=store.find("notifications",id).map(LinkedHashMap::new).orElseThrow(()->notFound("Notification not found"));item.put("status",state);item.put(field,OffsetDateTime.now().toString());store.save("notifications",id,item);return ApiResponse.ok(safe(item),"Notification updated");}
-    private Map<String,Object> authData(Map<String,Object> user){Map<String,Object> data=new LinkedHashMap<>();data.put("accessToken",jwt.create(text(user,"email"),text(user,"role"),text(user,"name")));data.put("refreshToken",null);data.put("tokenType","Bearer");data.put("role",user.get("role"));data.put("email",user.get("email"));data.put("name",user.get("name"));return data;}
+    private Map<String,Object> authData(Map<String,Object> user) {
+        return authData(user, text(user,"role"));
+    }
+
+    private Map<String,Object> authData(Map<String,Object> user, String role) {
+        Map<String,Object> data=new LinkedHashMap<>();
+        data.put("accessToken",jwt.create(text(user,"email"),role,text(user,"name")));
+        data.put("refreshToken",null);
+        data.put("tokenType","Bearer");
+        data.put("role",role);
+        data.put("email",user.get("email"));
+        data.put("name",user.get("name"));
+        return data;
+    }
+
+    private String adminRole(Map<String,Object> user) {
+        String role=text(user,"role").trim().toUpperCase(Locale.ROOT).replaceFirst("^ROLE_","");
+        return Set.of("ADMIN","SUPER_ADMIN").contains(role) ? role : "ADMIN";
+    }
     private Map<String,Object> safe(Map<String,Object> record){Map<String,Object> copy=new LinkedHashMap<>(record);copy.remove("password");return copy;}
     private String type(String resource){if(!RESOURCES.contains(resource)) throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Unknown resource"); return TYPES.getOrDefault(resource,resource);}
     private void requireAdmin(Authentication auth){if(auth==null||auth.getAuthorities().stream().noneMatch(a->Set.of("ROLE_ADMIN","ROLE_SUPER_ADMIN").contains(a.getAuthority()))) throw new ResponseStatusException(HttpStatus.FORBIDDEN,"Admin access required");}
