@@ -28,7 +28,7 @@ public class SecurityConfig {
         http.csrf(csrf -> csrf.disable()).cors(cors -> cors.configurationSource(corsSource(origins)))
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/", "/error", "/api/auth/**", "/api/admin/auth/login", "/api/admin/auth/verify-otp", "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/h2-console/**").permitAll()
+                        .requestMatchers("/", "/index.html", "/assets/**", "/favicon.ico", "/manifest.webmanifest", "/error", "/api/health", "/api/auth/**", "/api/admin/auth/login", "/api/admin/auth/verify-otp", "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/h2-console/**").permitAll()
                         .requestMatchers("/api/admin/**").hasAnyRole("ADMIN", "SUPER_ADMIN")
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .anyRequest().authenticated())
