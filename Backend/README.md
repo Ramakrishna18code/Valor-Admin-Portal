@@ -15,7 +15,7 @@ The default development profile uses a file-backed H2 database at `Backend/data/
 
 URLs:
 
-- Health: `http://localhost:8080/`
+- Health: `http://localhost:8081/api/health`
 - Swagger: `http://localhost:8080/swagger-ui.html`
 - H2 console (development only): `http://localhost:8080/h2-console`
 

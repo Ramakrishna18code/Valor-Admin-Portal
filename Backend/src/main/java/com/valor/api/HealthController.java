@@ -7,6 +7,6 @@ import java.util.Map;
 
 @RestController
 public class HealthController {
-    @GetMapping("/")
+    @GetMapping("/api/health")
     public Map<String, Object> health() { return Map.of("service", "valor-admin-backend", "status", "UP", "timestamp", java.time.OffsetDateTime.now()); }
 }
