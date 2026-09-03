@@ -21,7 +21,7 @@ const definitions = {
 };
 
 const aliases = {
-  'Name': ['name','title','visit','itemName','actor'], 'Building': ['buildingName','building','name'], 'Customer': ['customerName','companyName','customer','customerId'], 'Email': ['email'], 'Role': ['role'],
+  'ID': ['id'], 'Name': ['name','title','visit','itemName','actor'], 'Building': ['buildingName','building','name'], 'Customer': ['customerName','companyName','customer','customerId'], 'Customer ID': ['customerId'], 'Building ID': ['buildingId'], 'Lift ID': ['liftId'], 'Service ID': ['serviceId'], 'Email': ['email'], 'Address': ['address','street'], 'Status': ['status','accountStatus'], 'Role': ['role'],
   'Employee ID': ['employeeId'], 'Designation': ['designation'], 'Active': ['active','enabled'], 'Description': ['description','message'],
   'Permissions': ['permissions'], 'Setting': ['setting','companyName','supportEmail','supportPhone','timezone'], 'Value': ['value'],
   'Invoice number': ['invoiceNumber'], 'Amount': ['amount'], 'Tax': ['tax','gstAmount'], 'Total': ['total','totalAmount'], 'Due date': ['dueDate'],
@@ -31,7 +31,13 @@ const aliases = {
 };
 
 const normalize = (value) => String(value ?? '').replaceAll('_',' ').replaceAll('-',' ');
+const publicId = (prefix, value) => value == null || value === '' ? 'N/A' : `VAL-${prefix}-${new Date().getFullYear()}-${String(value).padStart(4, '0')}`;
+const recordPublicId = (row) => row.buildingName ? publicId('BLD', row.id) : row.liftNumber ? publicId('LFT', row.id) : publicId('CUS', row.id);
 const displayValue = (row, column) => {
+  if (column === 'ID') return recordPublicId(row);
+  if (column === 'Customer ID') return publicId('CUS', row.customerId);
+  if (column === 'Building ID') return publicId('BLD', row.buildingId);
+  if (column === 'Lift ID') return publicId('LFT', row.liftId);
   const keys = aliases[column] || [column.replaceAll(' ','').replace(/^./, (c) => c.toLowerCase())];
   const key = Object.keys(row).find((candidate) => keys.some((alias) => candidate.toLowerCase() === alias.toLowerCase()));
   if (!key) return 'N/A';
@@ -42,7 +48,7 @@ const displayValue = (row, column) => {
 };
 
 const fieldsFor = (moduleId, module) => module.fields || {
-  customers: [['name','Name'],['email','Email','email'],['phone','Phone'],['accountStatus','Account status','select',['ACTIVE','INACTIVE','SUSPENDED']]],
+  customers: [['name','Name'],['email','Email','email'],['password','Temporary password','password'],['phone','Phone'],['address','Address'],['city','City'],['state','State'],['pincode','Pincode'],['accountStatus','Account status','select',['ACTIVE','INACTIVE','SUSPENDED']],['buildingName','First building (optional)'],['buildingType','Building type'],['liftName','First lift (optional)'],['liftNumber','Lift number']],
   buildings: [['customerId','Customer ID','number'],['buildingName','Building name'],['buildingType','Building type'],['city','City'],['emergencyContactPhone','Emergency contact'],['status','Status','select',['ACTIVE','INACTIVE']]],
   lifts: [['name','Name'],['liftNumber','Lift number'],['manufacturer','Manufacturer'],['model','Model'],['customerId','Customer ID','number'],['buildingId','Building ID','number'],['currentStatus','Status','select',['ACTIVE','DOWN','MAINTENANCE','OUT_OF_SERVICE']],['healthScore','Health score','number']],
   amc: [['plan','Plan'],['amcNumber','AMC number'],['liftId','Lift ID','number'],['startDate','Start date','date'],['endDate','End date','date'],['status','Status','select',['ACTIVE','EXPIRED','CANCELLED','RENEWED']]],
@@ -95,7 +101,28 @@ export function AdminModulePage({ moduleId, module, notify }) {
   const filtered = useMemo(() => tableRecords.filter((row) => JSON.stringify(row).toLowerCase().includes(query.toLowerCase())), [tableRecords, query]);
   const openCreate = () => { if (moduleId === 'settings' && records[0]) { setDraft({ ...records[0] }); setEditor(records[0]); return; } const blank = {}; fields.forEach(([key,,type]) => { blank[key] = type === 'checkbox' ? true : ''; }); setDraft(blank); setEditor('create'); };
   const openEdit = (row) => { setDraft({ ...row }); setEditor(row); };
-  const save = async () => { try { if (editor === 'create') await apiRequest(`/api/${resource}`, { method: 'POST', body: JSON.stringify(draft) }); else await apiRequest(`/api/${resource}/${editor.id}`, { method: 'PUT', body: JSON.stringify(draft) }); notify(`${definition.title} saved successfully`); setEditor(null); await load(); } catch (err) { setError(err.message || 'Could not save this record.'); } };
+  const save = async () => { try {
+    if (editor === 'create' && moduleId === 'lifts' && (!draft.customerId || !draft.buildingId)) {
+      setError('Select a customer and one of that customer\'s buildings before adding a lift.');
+      return;
+    }
+    if (editor === 'create' && moduleId === 'customers' && draft.liftName?.trim() && !draft.buildingName?.trim()) {
+      setError('Add a building before adding the first lift.');
+      return;
+    }
+    const { buildingName, buildingType, liftName, liftNumber, ...recordPayload } = draft;
+    const payload = moduleId === 'buildings' || moduleId === 'lifts'
+      ? { ...draft, customerId: draft.customerId ? Number(draft.customerId) : undefined, buildingId: draft.buildingId ? Number(draft.buildingId) : undefined }
+      : moduleId === 'customers' ? recordPayload : draft;
+    if (editor === 'create') {
+      const savedCustomer = await apiRequest(`/api/${resource}`, { method: 'POST', body: JSON.stringify(payload) });
+      if (moduleId === 'customers' && buildingName?.trim()) {
+        const savedBuilding = await apiRequest('/api/buildings', { method: 'POST', body: JSON.stringify({ customerId: savedCustomer.id, buildingName: buildingName.trim(), buildingType: buildingType || 'RESIDENTIAL', status: 'ACTIVE' }) });
+        if (liftName?.trim()) await apiRequest('/api/lifts', { method: 'POST', body: JSON.stringify({ customerId: savedCustomer.id, buildingId: savedBuilding.id, name: liftName.trim(), liftNumber: liftNumber?.trim() || undefined, currentStatus: 'ACTIVE' }) });
+      }
+    } else await apiRequest(`/api/${resource}/${editor.id}`, { method: 'PUT', body: JSON.stringify(payload) });
+    notify(moduleId === 'customers' && buildingName?.trim() ? 'Customer, building, and lift saved successfully' : `${definition.title} saved successfully`); setEditor(null); await load();
+  } catch (err) { setError(err.message || 'Could not save this record.'); } };
   const remove = async (row) => { if (!window.confirm(`Delete ${displayValue(row, columns[0])}? This cannot be undone.`)) return; try { await apiRequest(`/api/${resource}/${row.id}`, { method: 'DELETE' }); notify('Record deleted'); await load(); } catch (err) { setError(err.message || 'Could not delete this record.'); } };
   const formRecord = editor === 'create' ? draft : editor || {};
 
@@ -103,7 +130,7 @@ export function AdminModulePage({ moduleId, module, notify }) {
     {error && <div className="inline-error">{error}<button type="button" onClick={() => setError('')}><X size={14} /></button></div>}
     <section className="panel functional-panel"><div className="functional-toolbar"><div className="search-box"><Search size={16} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={`Search ${definition.title.toLowerCase()}`} /></div><span className="record-count">{filtered.length} records</span></div>{loading ? <div className="loading-state"><LoaderCircle className="spin" size={22} />Loading {definition.title.toLowerCase()}…</div> : filtered.length === 0 ? <div className="empty-state"><div><Search size={22} /></div><b>No records found</b><span>Try another search or create a new record.</span></div> : <div className="functional-table-wrap"><table className="functional-table"><thead><tr>{columns.map((column) => <th key={column}>{column}</th>)}<th>Actions</th></tr></thead><tbody>{filtered.map((row) => { const rowKey = String(row.id ?? displayValue(row, columns[0])); const rowTitle = moduleDisplayValue(row, columns[0]); const actionRecord = moduleId === 'settings' ? records[0] : row; return <tr key={rowKey}>{columns.map((column) => <td key={column}>{['Status', 'Active', 'Role'].includes(column) ? <Pill value={displayValue(row, column)} /> : <span title={moduleDisplayValue(row, column)}>{moduleDisplayValue(row, column)}</span>}</td>)}<td><ModuleActions row={row} title={rowTitle} open={openActionId === rowKey} onToggle={setOpenActionId} onView={() => setViewing(actionRecord)} onEdit={() => openEdit(actionRecord)} onDelete={() => remove(actionRecord)} canEdit={!definition.readonly} canDelete={!definition.readonly && moduleId !== 'settings'} /></td></tr>; })}</tbody></table></div>}</section>
     {viewing && <ModuleDetails row={viewing} title={moduleDisplayValue(viewing, columns[0])} onClose={() => setViewing(null)} />}
-    {editor && <><div className="drawer-scrim" onClick={() => setEditor(null)} /><aside className="drawer functional-drawer"><div className="drawer-head"><div><div className="eyebrow">{editor === 'create' ? 'NEW RECORD' : 'EDIT RECORD'}</div><h2>{editor === 'create' ? definition.action : 'Edit ' + definition.title}</h2></div><button className="icon-btn" type="button" onClick={() => setEditor(null)}><X size={18} /></button></div><p className="drawer-description">Changes are validated by the Valor backend and saved securely.</p><div className="form-grid">{fields.map(([key, fieldLabel, type, options]) => <label key={key}>{fieldLabel}{type === 'textarea' ? <textarea value={formRecord[key] ?? ''} onChange={(event) => setDraft({ ...draft, [key]: event.target.value })} /> : type === 'select' ? <select value={formRecord[key] ?? ''} onChange={(event) => setDraft({ ...draft, [key]: event.target.value })}><option value="">Select {fieldLabel.toLowerCase()}</option>{options.map((option) => <option key={option} value={option}>{normalize(option)}</option>)}</select> : type === 'checkbox' ? <input type="checkbox" checked={Boolean(formRecord[key])} onChange={(event) => setDraft({ ...draft, [key]: event.target.checked })} /> : <input type={type || 'text'} value={formRecord[key] ?? ''} onChange={(event) => setDraft({ ...draft, [key]: event.target.value })} />}</label>)}</div><div className="drawer-footer"><button className="secondary-btn" type="button" onClick={() => setEditor(null)}>Cancel</button><button className="primary-btn" type="button" onClick={save}><Save size={15} />Save changes</button></div></aside></>}
+    {editor && <><div className="drawer-scrim" onClick={() => setEditor(null)} /><aside className="drawer functional-drawer"><div className="drawer-head"><div><div className="eyebrow">{editor === 'create' ? 'NEW RECORD' : 'EDIT RECORD'}</div><h2>{editor === 'create' ? definition.action : 'Edit ' + definition.title}</h2></div><button className="icon-btn" type="button" onClick={() => setEditor(null)}><X size={18} /></button></div><p className="drawer-description">Changes are validated by the Valor backend and saved securely.</p><div className="form-grid">{fields.map(([key, fieldLabel, type, options]) => <label key={key}>{fieldLabel}{type === 'textarea' ? <textarea value={formRecord[key] ?? ''} onChange={(event) => setDraft({ ...draft, [key]: event.target.value })} /> : type === 'select' ? <select value={formRecord[key] ?? ''} onChange={(event) => setDraft({ ...draft, [key]: event.target.value })}><option value="">Select {fieldLabel.toLowerCase()}</option>{options.map((option) => <option key={option} value={option}>{normalize(option)}</option>)}</select> : type === 'checkbox' ? <input type="checkbox" checked={Boolean(formRecord[key])} onChange={(event) => setDraft({ ...draft, [key]: event.target.checked })} /> : moduleId === 'buildings' && key === 'customerId' ? <select required value={formRecord[key] ?? ''} onChange={(event) => setDraft({ ...draft, [key]: event.target.value })}><option value="">Select customer</option>{lookups.customers.map((customer) => <option key={customer.id} value={customer.id}>{publicId('CUS', customer.id)} - {customer.name || customer.companyName}</option>)}</select> : moduleId === 'lifts' && key === 'customerId' ? <select required value={formRecord[key] ?? ''} onChange={(event) => setDraft({ ...draft, [key]: event.target.value, buildingId: '' })}><option value="">Select customer first</option>{lookups.customers.map((customer) => <option key={customer.id} value={customer.id}>{publicId('CUS', customer.id)} - {customer.name || customer.companyName}</option>)}</select> : moduleId === 'lifts' && key === 'buildingId' ? <select required={editor === 'create'} disabled={!formRecord.customerId} value={formRecord[key] ?? ''} onChange={(event) => setDraft({ ...draft, [key]: event.target.value })}><option value="">{formRecord.customerId ? 'Select customer building' : 'Select customer first'}</option>{lookups.buildings.filter((building) => String(building.customerId) === String(formRecord.customerId)).map((building) => <option key={building.id} value={building.id}>{publicId('BLD', building.id)} - {building.buildingName}</option>)}</select> : <input type={type || 'text'} required={editor === 'create' && moduleId === 'customers' && ['name', 'email', 'password', 'phone'].includes(key)} value={formRecord[key] ?? ''} onChange={(event) => setDraft({ ...draft, [key]: event.target.value })} />}</label>)}</div><div className="drawer-footer"><button className="secondary-btn" type="button" onClick={() => setEditor(null)}>Cancel</button><button className="primary-btn" type="button" onClick={save}><Save size={15} />Save changes</button></div></aside></>}
   </>;
 }
 

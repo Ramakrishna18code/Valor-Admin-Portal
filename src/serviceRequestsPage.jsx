@@ -11,6 +11,7 @@ const serviceTypes = ['BREAKDOWN', 'INSPECTION', 'ROUTINE_MAINTENANCE', 'EMERGEN
 const label = (value) => String(value || 'N/A').replaceAll('_', ' ');
 const initials = (name) => name && name !== 'Unassigned' ? name.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase() : 'N/A';
 const dateLabel = (value) => value ? new Date(`${String(value).slice(0, 10)}T00:00:00`).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A';
+const publicId = (prefix, value) => value == null || value === '' ? 'N/A' : `VAL-${prefix}-${new Date().getFullYear()}-${String(value).padStart(4, '0')}`;
 
 function StatusPill({ value }) { return <span className={`request-pill ${String(value || '').toLowerCase().replaceAll('_', '-')}`}><i />{label(value)}</span>; }
 
@@ -23,6 +24,7 @@ function RequestEditor({ request, customers, lifts, technicians, onClose, onSave
     assignedTechnicianId: request.assignedTechnicianId ?? '',
   });
   const [validation, setValidation] = useState('');
+  const availableLifts = draft.customerId ? lifts.filter((lift) => String(lift.customerId) === String(draft.customerId)) : lifts;
   const update = (key, value) => setDraft((current) => ({ ...current, [key]: value }));
   const submit = () => {
     if (!draft.title.trim() || !draft.description.trim() || !draft.customerId || !draft.liftId) { setValidation('Title, description, customer, and lift are required.'); return; }
@@ -36,8 +38,8 @@ function RequestEditor({ request, customers, lifts, technicians, onClose, onSave
       <div className="request-form-grid">
         <label className="request-form-wide">Issue title<input value={draft.title} onChange={(event) => update('title', event.target.value)} placeholder="Door sensor calibration" /></label>
         <label className="request-form-wide">Description<textarea rows="3" value={draft.description} onChange={(event) => update('description', event.target.value)} placeholder="Describe the issue or requested service" /></label>
-        <label>Customer<select value={draft.customerId} onChange={(event) => update('customerId', event.target.value)}><option value="">Select customer</option>{customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.name || customer.companyName || `Customer #${customer.id}`}</option>)}</select></label>
-        <label>Lift<select value={draft.liftId} onChange={(event) => update('liftId', event.target.value)}><option value="">Select lift</option>{lifts.map((lift) => <option key={lift.id} value={lift.id}>{lift.liftNumber || lift.name || `Lift #${lift.id}`}</option>)}</select></label>
+        <label>Customer<select value={draft.customerId} onChange={(event) => setDraft((current) => ({ ...current, customerId: event.target.value, liftId: '' }))}><option value="">Select customer</option>{customers.map((customer) => <option key={customer.id} value={customer.id}>{publicId('CUS', customer.id)} - {customer.name || customer.companyName || 'Customer'}</option>)}</select></label>
+        <label>Lift<select value={draft.liftId} onChange={(event) => update('liftId', event.target.value)}><option value="">Select lift</option>{availableLifts.map((lift) => <option key={lift.id} value={lift.id}>{publicId('LFT', lift.id)} - {lift.liftNumber || lift.name || 'Lift'}</option>)}</select></label>
         <label>Service type<select value={draft.serviceType} onChange={(event) => update('serviceType', event.target.value)}>{serviceTypes.map((type) => <option key={type} value={type}>{label(type)}</option>)}</select></label>
         <label>Priority<select value={draft.priority} onChange={(event) => update('priority', event.target.value)}>{priorityOptions.map((priority) => <option key={priority} value={priority}>{label(priority)}</option>)}</select></label>
         <label>Status<select value={draft.status} onChange={(event) => update('status', event.target.value)}>{statusOptions.map((status) => <option key={status} value={status}>{label(status)}</option>)}</select></label>
@@ -55,7 +57,7 @@ function RequestDetails({ request, customer, lift, technician, onClose, onEdit }
     <section className="request-details" role="dialog" aria-modal="true" aria-labelledby="request-details-title">
       <div className="request-editor-head"><div><span className="request-eyebrow">SERVICE REQUEST</span><h2 id="request-details-title">{request.serviceId || `SR-${request.id}`}</h2></div><button className="icon-btn" type="button" onClick={onClose} aria-label="Close"><X size={18} /></button></div>
       <div className="request-detail-title"><div className="request-detail-icon"><Activity size={18} /></div><div><h3>{request.title || 'Service request'}</h3><span>{request.description || 'No description provided.'}</span></div></div>
-      <div className="request-detail-grid"><div><span>Customer</span><b>{customer}</b></div><div><span>Lift</span><b>{lift}</b></div><div><span>Technician</span><b>{technician}</b></div><div><span>Service type</span><b>{label(request.serviceType)}</b></div><div><span>Priority</span><StatusPill value={request.priority} /></div><div><span>Status</span><StatusPill value={request.status} /></div><div><span>Preferred date</span><b>{dateLabel(request.preferredVisitDate)}</b></div><div><span>Time slot</span><b>{request.preferredTimeSlot || 'N/A'}</b></div></div>
+      <div className="request-detail-grid"><div><span>Service ID</span><b>{request.serviceId || publicId('SRQ', request.id)}</b></div><div><span>Customer ID</span><b>{publicId('CUS', request.customerId)}</b></div><div><span>Customer</span><b>{customer}</b></div><div><span>Lift ID</span><b>{publicId('LFT', request.liftId)}</b></div><div><span>Lift</span><b>{lift}</b></div><div><span>Technician</span><b>{technician}</b></div><div><span>Service type</span><b>{label(request.serviceType)}</b></div><div><span>Priority</span><StatusPill value={request.priority} /></div><div><span>Status</span><StatusPill value={request.status} /></div><div><span>Preferred date</span><b>{dateLabel(request.preferredVisitDate)}</b></div><div><span>Time slot</span><b>{request.preferredTimeSlot || 'N/A'}</b></div></div>
       <div className="request-details-footer"><button className="secondary-btn" type="button" onClick={onClose}>Close</button><button className="primary-btn" type="button" onClick={() => { onClose(); onEdit(request); }}><Edit3 size={15} />Edit request</button></div>
     </section>
   </div>;

@@ -1,8 +1,8 @@
 import { apiRequest } from './client';
 
 export const authApi = {
-  login: (body) => apiRequest('/api/admin/auth/login', { method: 'POST', body: JSON.stringify(body) }),
-  me: () => apiRequest('/api/admin/auth/me')
+  login: (body) => apiRequest('/api/auth/admin/login', { method: 'POST', body: JSON.stringify(body) }),
+  me: () => apiRequest('/api/admin/me')
 };
 
 export const dashboardApi = {
