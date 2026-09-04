@@ -127,7 +127,9 @@ Copy `.env.example` to `.env` when a custom backend URL is required:
 VITE_API_BASE_URL=http://localhost:8081
 ```
 
-In Vite development mode, the default API is `http://localhost:8081`. In a production build with no `VITE_API_BASE_URL`, the frontend uses same-origin `/api` requests. For a separately hosted backend, set `VITE_API_BASE_URL` before running `npm run build`.
+In Vite development mode, the default API is `http://localhost:8081`. In a production build with no `VITE_API_BASE_URL`, the frontend uses the deployed Valor backend URL. For a separately hosted backend, set `VITE_API_BASE_URL` before running `npm run build`.
+
+For the deployed Vercel frontend, set `VITE_API_BASE_URL` to `https://valor-backend-rk.onrender.com`. The value is the backend host root; do not append `/api`, because frontend API paths already include that prefix.
 
 ## Backend configuration
 
@@ -172,8 +174,8 @@ Set deployment environment variables before starting the backend. Build the fron
 
 Authentication:
 
-- `POST /api/admin/auth/login`
-- `GET /api/admin/auth/me`
+- `POST /api/auth/admin/login`
+- `GET /api/admin/me`
 
 Operations:
 
@@ -208,7 +210,7 @@ DELETE /api/{resource}/{id}
 
 2. Sign in again.
 3. Confirm the account role is `ADMIN` or `SUPER_ADMIN`.
-4. Confirm the deployed frontend was built with the correct `VITE_API_BASE_URL`.
+4. Confirm the deployed frontend was built with `VITE_API_BASE_URL=https://valor-backend-rk.onrender.com`.
 5. Confirm the backend `VALOR_CORS_ORIGINS` contains the deployed frontend origin.
 6. Hard-refresh the browser after deployment.
 
@@ -216,7 +218,7 @@ The backend normalizes both `ADMIN`/`SUPER_ADMIN` and `ROLE_ADMIN`/`ROLE_SUPER_A
 
 ### Backend appears offline
 
-Check port `8081`, start the backend script, and confirm that `http://localhost:8081/api/admin/auth/login` is reachable. If using another port, update both `PORT` and `VITE_API_BASE_URL`.
+Check port `8081`, start the backend script, and confirm that `http://localhost:8081/api/auth/admin/login` is reachable. If using another port, update both `PORT` and `VITE_API_BASE_URL`.
 
 ## Verification commands
 
