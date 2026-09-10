@@ -13,3 +13,6 @@ export const assetServices = createAssetServices(client);
 
 import { createWorkflowServices } from './workflow.js';
 export const workflowServices = createWorkflowServices(client);
+
+import { createNotificationServices } from './notifications.js';
+export const notificationServices = createNotificationServices(client);

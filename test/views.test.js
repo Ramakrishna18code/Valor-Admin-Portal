@@ -50,3 +50,14 @@ test('asset and staff screens show backend values, role controls and no unsuppor
  assert(render(WorkflowPage,{api:{},assets:{},user:{role:'CUSTOMER'}}).includes('Access denied'));
  }finally{await server.close();}
  });
+
+test('notification UI separates personal inbox and compose, renders safe timestamps and recipient-owned read actions',async()=>{
+ const server=await createServer({server:{middlewareMode:true},appType:'custom'});
+ try{const {NotificationTable,ComposeNotification,NotificationsPage}=await server.ssrLoadModule('/src/notificationModules.jsx');const render=(c,p)=>renderToStaticMarkup(React.createElement(c,p));
+ const row={id:1,recipientUserId:9,title:'Actual title',message:'<script>unsafe</script>',channel:'IN_APP',status:'PENDING',readAt:null};
+ const html=render(NotificationTable,{items:[row],userId:9});assert(html.includes('Mark read'));assert(html.includes('Not provided'));assert(!html.includes('<script>unsafe'));assert(html.includes('&lt;script&gt;'));
+ assert(!render(NotificationTable,{items:[row],userId:8}).includes('Mark read'));assert(!render(NotificationTable,{items:[{...row,status:'READ'}],userId:9}).includes('Mark read'));
+ const compose=render(ComposeNotification,{api:{},directories:{}});assert(compose.includes('Search customers'));assert(compose.includes('UTC, not local time'));assert(!compose.includes('type="number"'));assert(compose.includes('IN_APP'));
+ assert(render(NotificationsPage,{api:{},directories:{},user:{role:'ADMIN',userId:9}}).includes('My notification inbox'));assert(render(NotificationsPage,{api:{},directories:{},user:{role:'TECHNICIAN'}}).includes('Access denied'));
+ }finally{await server.close();}
+});

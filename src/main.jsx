@@ -3,12 +3,13 @@ import { createRoot } from 'react-dom/client';
 import { Home, ClipboardList, AlertTriangle, CalendarDays, Wrench, Users, Building2, Layers3, ShieldCheck, CreditCard, ReceiptText, Package, RefreshCw, Bell, BarChart3, Download, UserRound, Database, Settings, ChevronDown, ChevronRight, Menu, X, LogOut, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import './styles.css';
 import './migration.css';
-import { services, session, assetServices, workflowServices } from './api/runtime.js';
+import { services, session, assetServices, workflowServices, notificationServices } from './api/runtime.js';
 import { routeState } from './api/services.js';
 import { SummaryView, ProtectedContent } from './views.jsx';
 import { AssetPage, StaffPage } from './assetModules.jsx';
 import { WorkflowPage } from './workflowModules.jsx';
-const migrated = new Set(['dashboard','buildings','lifts','amc','admin-users','service-requests']);
+import { NotificationsPage } from './notificationModules.jsx';
+const migrated = new Set(['dashboard','buildings','lifts','amc','admin-users','service-requests','notifications']);
 const navGroups = [
   { label: 'MAIN', items: [{ id: 'dashboard', label: 'Dashboard', icon: Home }] },
   { label: 'OPERATIONS', items: [
@@ -59,7 +60,7 @@ function App() {
     </aside>
     {mobileNav && <div className="mobile-scrim" onClick={() => setMobileNav(false)}/>}
     <main className="main"><header className="topbar"><button className="mobile-menu" aria-label="Open navigation" onClick={() => setMobileNav(true)}><Menu size={20}/></button><div className="breadcrumbs"><span>Valor Operations</span><ChevronRight size={14}/><b>{activeLabel}</b></div><div className="topbar-actions"><div className="user-copy"><b>{user.email || 'Administrator'}</b><span>{user.role === 'SUPER_ADMIN' ? 'Super admin' : 'Admin'}</span></div><button className="secondary-btn" disabled={loggingOut} onClick={logout}><LogOut size={15}/>{loggingOut ? 'Signing out...' : 'Log out'}</button></div></header>
-      <div className="content">{active === 'dashboard' ? <Dashboard/> : ['buildings','lifts','amc'].includes(active) ? <AssetPage key={active} kind={active} api={assetServices[active]} user={user}/> : active === 'service-requests' ? <WorkflowPage api={workflowServices} assets={assetServices} user={user}/> : active === 'admin-users' ? <StaffPage api={assetServices.staff} user={user}/> : <section className="panel empty-state"><h1>{activeLabel}</h1><p>This module is deferred until its API migration. No data or actions are connected.</p><button className="secondary-btn" onClick={() => setActive('dashboard')}>Back to dashboard</button></section>}</div>
+      <div className="content">{active === 'dashboard' ? <Dashboard/> : ['buildings','lifts','amc'].includes(active) ? <AssetPage key={active} kind={active} api={assetServices[active]} user={user}/> : active === 'service-requests' ? <WorkflowPage api={workflowServices} assets={assetServices} user={user}/> : active === 'notifications' ? <NotificationsPage api={notificationServices} directories={workflowServices} user={user}/> : active === 'admin-users' ? <StaffPage api={assetServices.staff} user={user}/> : <section className="panel empty-state"><h1>{activeLabel}</h1><p>This module is deferred until its API migration. No data or actions are connected.</p><button className="secondary-btn" onClick={() => setActive('dashboard')}>Back to dashboard</button></section>}</div>
     </main>
   </div></ProtectedContent>;
 }
