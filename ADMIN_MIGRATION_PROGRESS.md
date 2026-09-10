@@ -1,3 +1,17 @@
+# Admin Portal Stage 1 accepted - 10 September 2026
+
+Final acceptance is based on the user's manual browser observations and the existing automated coverage, explicitly accepted as sufficient by the user.
+
+- Manually confirmed: SUPER_ADMIN login succeeded; page refresh retained authentication; authenticated GET `/api/v1/me` and GET `/api/v1/admin/dashboard/summary` succeeded; dashboard rendered backend-provided data; logout cleared access to the authenticated session; browser console contained no red application errors.
+- Automated coverage accepted: single-flight refresh, failed-refresh cleanup, ADMIN/SUPER_ADMIN admission, rejection of other roles, and distinct 401/403 handling. Portal: 25 tests passed and production build passed. Backend CORS commit: 100 tests passed and Maven package passed.
+- Status: Stage 1 accepted. No further browser observation is an acceptance blocker under the user's decision. This does not claim separately observed Back-button behavior or live refresh-race testing; those earlier evidence boundaries remain historical facts.
+- No new tests, API requests, source changes or database access were required for this documentation-only acceptance. No credentials, tokens or sensitive values recorded.
+- Stage 2 has not begun. Deferred modules remain deferred. Push requires explicit authorization; nothing was pushed.
+
+## Historical verification record
+
+The final acceptance above supersedes the pending-check statements in the earlier evidence matrix below.
+
 # Admin Portal: authentication and dashboard migration
 
 - Branch: existing `master`, explicitly authorized after inspection found no local `main`. No branch creation/switch and no push.
@@ -50,6 +64,6 @@ Portal implementation: `2749c60` on authorized `master`. Backend CORS implementa
 
 ### Acceptance and next step
 
-The implementation commits are validated candidates for an explicitly authorized push; neither repository was pushed. Full browser acceptance is still pending: authenticated reload, actual role-account rejection, dashboard response/display agreement, refresh concurrency/failure, logout/Back, unauthorized UI behavior and application console/network checks. Complete these observations before declaring the live Stage 1 checklist fully passed or migrating Stage 2 modules.
+Stage 1 is now accepted based on the final manual observations and automated coverage stated above. Both repositories are ready for an explicitly authorized push. Stage 2 remains unstarted and deferred until separately requested.
 
 All deferred modules remain deferred. README changes are preserved and excluded from commits. Backend code/configuration/migrations, databases, other clients and private environment values were not modified by this verification. Only public health/preflight and unauthenticated read requests were issued; no database was directly accessed or changed.
