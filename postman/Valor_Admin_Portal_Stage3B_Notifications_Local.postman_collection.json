@@ -1,0 +1,670 @@
+{
+  "info": {
+    "name": "Valor Admin Portal Stage 3B Notifications - LOCAL DEVELOPMENT ONLY",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Local development only at http://localhost:8081. API verification, NOT browser/UI verification. Import the matching blank environment; enter private local SUPER_ADMIN credentials; run the entire collection sequentially with one iteration. Step 04 visits both paginated directories and selects one eligible existing recipient; inbox reads page through all matching pages. Requires an existing active customer or technician. Creates and retains two uniquely labeled IN_APP notifications; marks only the current admin notification read. No deletion, fake sent-history, bulk or external delivery. Final recipient assertions use the create response: this does NOT verify the other recipient login/inbox or their later record state. Any required assertion stops the run; fix prerequisites and restart at 01, never continue manually. Repeated runs retain separate audit records. Do not export populated environments, save response examples or share captures containing credentials/tokens. Scripts do not log secrets."
+  },
+  "item": [
+    {
+      "name": "01 - Health",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "for(const key of [\"adminAccessToken\",\"adminRefreshToken\",\"adminUserId\",\"recipientUserId\",\"recipientType\",\"selfNotificationId\",\"recipientNotificationId\",\"runId\",\"runBlocked\",\"lastStep\",\"directoryKind\",\"directoryPage\",\"directoryCandidate\",\"inboxPage\",\"selfFound\",\"recipientSnapshot\",\"selfReadAt\"])pm.environment.unset(key);pm.environment.set('lastStep','0');pm.environment.set('runId','PORTAL-STAGE3B-'+Date.now()+'-'+pm.variables.replaceIn('{{$randomUUID}}'));",
+              "function block(message){pm.environment.set('runBlocked',message);pm.execution.setNextRequest(null);pm.test('Prerequisites',()=>pm.expect(false,message).to.equal(true));pm.execution.skipRequest();}",
+              "if(pm.environment.get('baseUrl')!=='http://localhost:8081')block('Use only http://localhost:8081 for local development.');",
+              "if(pm.environment.get('runBlocked'))block('Run blocked: fix the prerequisite and restart at 01.');",
+              "if(Number(pm.environment.get('lastStep'))!==0)block('Run the entire collection sequentially from 01 in Collection Runner.');",
+              ""
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "function check(label,condition){pm.test(label,()=>pm.expect(Boolean(condition),label).to.equal(true));if(!condition)throw Error(label);}",
+              "function positive(value){return Number.isSafeInteger(value)&&value>0;}",
+              "function eid(key){return Number(pm.environment.get(key));}",
+              "function saveId(key,value){check('Positive '+key,positive(value));pm.environment.set(key,String(value));}",
+              "function safe(value,auth=false){if(typeof value==='string'){for(const key of (auth?['superAdminPassword']:['superAdminPassword','adminAccessToken','adminRefreshToken'])){const secret=pm.environment.get(key);check('No secret value echoed',!secret||secret!==value);}}if(value&&typeof value==='object')for(const [key,v] of Object.entries(value)){check('No secret field',!['password','passwordHash','otpHash','tokenHash','otp','authorization','stackTrace'].includes(key));if(!auth)check('Operational response has no session tokens',!['accessToken','refreshToken'].includes(key));safe(v,auth);}}",
+              "function page(d){check('Page envelope',Array.isArray(d.items)&&Number.isSafeInteger(d.page)&&Number.isSafeInteger(d.size)&&d.size>0&&Number.isSafeInteger(d.totalElements)&&Number.isSafeInteger(d.totalPages));}",
+              "function notification(d,recipient,title){check('Notification identity',positive(d.id)&&d.recipientUserId===recipient);check('Notification content matches run',d.title===title&&d.message==='Local-development API verification '+pm.environment.get('runId'));check('In-app only',d.channel==='IN_APP');check('Unscheduled and not externally sent',d.scheduledAt===null&&d.sentAt===null);}",
+              "function ownPage(d,status){page(d);check('Requested page',d.page===Number(pm.environment.get('inboxPage')));for(const row of d.items){check('Inbox belongs only to signed-in user',row.recipientUserId===eid('adminUserId'));check('Other recipient record absent from admin inbox',row.id!==eid('recipientNotificationId'));if(status)check('Status filter respected',row.status===status);}}",
+              "function stamp(v){if(typeof v!=='string')return null;const m=/^(\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2})(?:\\.(\\d{1,9}))?$/.exec(v);if(!m||!Number.isFinite(Date.parse(m[1]+'Z')))return null;return {n:BigInt(Date.parse(m[1]+'Z'))*1000000n+BigInt((m[2]||'').padEnd(9,'0')),p:(m[2]||'').length};}",
+              "function sameTime(a,b){const x=stamp(a),y=stamp(b);if(!x||!y)return false;const delta=x.n>y.n?x.n-y.n:y.n-x.n;return delta===0n||((x.p>6||y.p>6)&&delta<1000n);}",
+              "",
+              "try{check('HTTP 200',pm.response.code===200);const envelope=pm.response.json();check('ApiResponse success and status',envelope.success===true&&envelope.status===pm.response.code&&Object.hasOwn(envelope,'data'));safe(envelope,false);const d=envelope.data;let repeat=false;",
+              "check('Backend healthy',d.status==='UP');",
+              "if(!repeat)pm.environment.set('lastStep','1');}catch(error){pm.environment.set('runBlocked','Step 1 assertion failed. Inspect assertion names; fix prerequisites and restart at 01.');pm.execution.setNextRequest(null);pm.test('Run stopped after failure',()=>pm.expect(false,'Do not continue a failed run manually.').to.equal(true));}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/health"
+      }
+    },
+    {
+      "name": "02 - Admin login",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "function block(message){pm.environment.set('runBlocked',message);pm.execution.setNextRequest(null);pm.test('Prerequisites',()=>pm.expect(false,message).to.equal(true));pm.execution.skipRequest();}",
+              "if(pm.environment.get('baseUrl')!=='http://localhost:8081')block('Use only http://localhost:8081 for local development.');",
+              "if(pm.environment.get('runBlocked'))block('Run blocked: fix the prerequisite and restart at 01.');",
+              "if(Number(pm.environment.get('lastStep'))!==1)block('Run the entire collection sequentially from 01 in Collection Runner.');",
+              "if(!pm.environment.get('superAdminEmail')||!pm.environment.get('superAdminPassword'))block('Enter SUPER_ADMIN credentials privately in the selected local environment.');pm.variables.set('requestBody',JSON.stringify({email:pm.environment.get('superAdminEmail'),password:pm.environment.get('superAdminPassword')}));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "function check(label,condition){pm.test(label,()=>pm.expect(Boolean(condition),label).to.equal(true));if(!condition)throw Error(label);}",
+              "function positive(value){return Number.isSafeInteger(value)&&value>0;}",
+              "function eid(key){return Number(pm.environment.get(key));}",
+              "function saveId(key,value){check('Positive '+key,positive(value));pm.environment.set(key,String(value));}",
+              "function safe(value,auth=false){if(typeof value==='string'){for(const key of (auth?['superAdminPassword']:['superAdminPassword','adminAccessToken','adminRefreshToken'])){const secret=pm.environment.get(key);check('No secret value echoed',!secret||secret!==value);}}if(value&&typeof value==='object')for(const [key,v] of Object.entries(value)){check('No secret field',!['password','passwordHash','otpHash','tokenHash','otp','authorization','stackTrace'].includes(key));if(!auth)check('Operational response has no session tokens',!['accessToken','refreshToken'].includes(key));safe(v,auth);}}",
+              "function page(d){check('Page envelope',Array.isArray(d.items)&&Number.isSafeInteger(d.page)&&Number.isSafeInteger(d.size)&&d.size>0&&Number.isSafeInteger(d.totalElements)&&Number.isSafeInteger(d.totalPages));}",
+              "function notification(d,recipient,title){check('Notification identity',positive(d.id)&&d.recipientUserId===recipient);check('Notification content matches run',d.title===title&&d.message==='Local-development API verification '+pm.environment.get('runId'));check('In-app only',d.channel==='IN_APP');check('Unscheduled and not externally sent',d.scheduledAt===null&&d.sentAt===null);}",
+              "function ownPage(d,status){page(d);check('Requested page',d.page===Number(pm.environment.get('inboxPage')));for(const row of d.items){check('Inbox belongs only to signed-in user',row.recipientUserId===eid('adminUserId'));check('Other recipient record absent from admin inbox',row.id!==eid('recipientNotificationId'));if(status)check('Status filter respected',row.status===status);}}",
+              "function stamp(v){if(typeof v!=='string')return null;const m=/^(\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2})(?:\\.(\\d{1,9}))?$/.exec(v);if(!m||!Number.isFinite(Date.parse(m[1]+'Z')))return null;return {n:BigInt(Date.parse(m[1]+'Z'))*1000000n+BigInt((m[2]||'').padEnd(9,'0')),p:(m[2]||'').length};}",
+              "function sameTime(a,b){const x=stamp(a),y=stamp(b);if(!x||!y)return false;const delta=x.n>y.n?x.n-y.n:y.n-x.n;return delta===0n||((x.p>6||y.p>6)&&delta<1000n);}",
+              "",
+              "try{check('HTTP 200',pm.response.code===200);const envelope=pm.response.json();check('ApiResponse success and status',envelope.success===true&&envelope.status===pm.response.code&&Object.hasOwn(envelope,'data'));safe(envelope,true);const d=envelope.data;let repeat=false;",
+              "check('SUPER_ADMIN session',d.role==='SUPER_ADMIN'&&positive(d.userId));check('Session tokens issued',typeof d.accessToken==='string'&&d.accessToken.length>0&&typeof d.refreshToken==='string'&&d.refreshToken.length>0);pm.environment.set('adminAccessToken',d.accessToken);pm.environment.set('adminRefreshToken',d.refreshToken);",
+              "if(!repeat)pm.environment.set('lastStep','2');}catch(error){pm.environment.set('runBlocked','Step 2 assertion failed. Inspect assertion names; fix prerequisites and restart at 01.');pm.execution.setNextRequest(null);pm.test('Run stopped after failure',()=>pm.expect(false,'Do not continue a failed run manually.').to.equal(true));}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/auth/login/admin",
+        "body": {
+          "mode": "raw",
+          "raw": "{{requestBody}}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "03 - Current session",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "function block(message){pm.environment.set('runBlocked',message);pm.execution.setNextRequest(null);pm.test('Prerequisites',()=>pm.expect(false,message).to.equal(true));pm.execution.skipRequest();}",
+              "if(pm.environment.get('baseUrl')!=='http://localhost:8081')block('Use only http://localhost:8081 for local development.');",
+              "if(pm.environment.get('runBlocked'))block('Run blocked: fix the prerequisite and restart at 01.');",
+              "if(Number(pm.environment.get('lastStep'))!==2)block('Run the entire collection sequentially from 01 in Collection Runner.');",
+              ""
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "function check(label,condition){pm.test(label,()=>pm.expect(Boolean(condition),label).to.equal(true));if(!condition)throw Error(label);}",
+              "function positive(value){return Number.isSafeInteger(value)&&value>0;}",
+              "function eid(key){return Number(pm.environment.get(key));}",
+              "function saveId(key,value){check('Positive '+key,positive(value));pm.environment.set(key,String(value));}",
+              "function safe(value,auth=false){if(typeof value==='string'){for(const key of (auth?['superAdminPassword']:['superAdminPassword','adminAccessToken','adminRefreshToken'])){const secret=pm.environment.get(key);check('No secret value echoed',!secret||secret!==value);}}if(value&&typeof value==='object')for(const [key,v] of Object.entries(value)){check('No secret field',!['password','passwordHash','otpHash','tokenHash','otp','authorization','stackTrace'].includes(key));if(!auth)check('Operational response has no session tokens',!['accessToken','refreshToken'].includes(key));safe(v,auth);}}",
+              "function page(d){check('Page envelope',Array.isArray(d.items)&&Number.isSafeInteger(d.page)&&Number.isSafeInteger(d.size)&&d.size>0&&Number.isSafeInteger(d.totalElements)&&Number.isSafeInteger(d.totalPages));}",
+              "function notification(d,recipient,title){check('Notification identity',positive(d.id)&&d.recipientUserId===recipient);check('Notification content matches run',d.title===title&&d.message==='Local-development API verification '+pm.environment.get('runId'));check('In-app only',d.channel==='IN_APP');check('Unscheduled and not externally sent',d.scheduledAt===null&&d.sentAt===null);}",
+              "function ownPage(d,status){page(d);check('Requested page',d.page===Number(pm.environment.get('inboxPage')));for(const row of d.items){check('Inbox belongs only to signed-in user',row.recipientUserId===eid('adminUserId'));check('Other recipient record absent from admin inbox',row.id!==eid('recipientNotificationId'));if(status)check('Status filter respected',row.status===status);}}",
+              "function stamp(v){if(typeof v!=='string')return null;const m=/^(\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2})(?:\\.(\\d{1,9}))?$/.exec(v);if(!m||!Number.isFinite(Date.parse(m[1]+'Z')))return null;return {n:BigInt(Date.parse(m[1]+'Z'))*1000000n+BigInt((m[2]||'').padEnd(9,'0')),p:(m[2]||'').length};}",
+              "function sameTime(a,b){const x=stamp(a),y=stamp(b);if(!x||!y)return false;const delta=x.n>y.n?x.n-y.n:y.n-x.n;return delta===0n||((x.p>6||y.p>6)&&delta<1000n);}",
+              "",
+              "try{check('HTTP 200',pm.response.code===200);const envelope=pm.response.json();check('ApiResponse success and status',envelope.success===true&&envelope.status===pm.response.code&&Object.hasOwn(envelope,'data'));safe(envelope,false);const d=envelope.data;let repeat=false;",
+              "check('Current administrator',d.role==='SUPER_ADMIN');saveId('adminUserId',d.userId);pm.environment.set('directoryKind','customers');pm.environment.set('directoryPage','0');",
+              "if(!repeat)pm.environment.set('lastStep','3');}catch(error){pm.environment.set('runBlocked','Step 3 assertion failed. Inspect assertion names; fix prerequisites and restart at 01.');pm.execution.setNextRequest(null);pm.test('Run stopped after failure',()=>pm.expect(false,'Do not continue a failed run manually.').to.equal(true));}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{adminAccessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/me"
+      }
+    },
+    {
+      "name": "04 - List active customers and technicians; select recipient",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "function block(message){pm.environment.set('runBlocked',message);pm.execution.setNextRequest(null);pm.test('Prerequisites',()=>pm.expect(false,message).to.equal(true));pm.execution.skipRequest();}",
+              "if(pm.environment.get('baseUrl')!=='http://localhost:8081')block('Use only http://localhost:8081 for local development.');",
+              "if(pm.environment.get('runBlocked'))block('Run blocked: fix the prerequisite and restart at 01.');",
+              "if(Number(pm.environment.get('lastStep'))!==3)block('Run the entire collection sequentially from 01 in Collection Runner.');",
+              ""
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "function check(label,condition){pm.test(label,()=>pm.expect(Boolean(condition),label).to.equal(true));if(!condition)throw Error(label);}",
+              "function positive(value){return Number.isSafeInteger(value)&&value>0;}",
+              "function eid(key){return Number(pm.environment.get(key));}",
+              "function saveId(key,value){check('Positive '+key,positive(value));pm.environment.set(key,String(value));}",
+              "function safe(value,auth=false){if(typeof value==='string'){for(const key of (auth?['superAdminPassword']:['superAdminPassword','adminAccessToken','adminRefreshToken'])){const secret=pm.environment.get(key);check('No secret value echoed',!secret||secret!==value);}}if(value&&typeof value==='object')for(const [key,v] of Object.entries(value)){check('No secret field',!['password','passwordHash','otpHash','tokenHash','otp','authorization','stackTrace'].includes(key));if(!auth)check('Operational response has no session tokens',!['accessToken','refreshToken'].includes(key));safe(v,auth);}}",
+              "function page(d){check('Page envelope',Array.isArray(d.items)&&Number.isSafeInteger(d.page)&&Number.isSafeInteger(d.size)&&d.size>0&&Number.isSafeInteger(d.totalElements)&&Number.isSafeInteger(d.totalPages));}",
+              "function notification(d,recipient,title){check('Notification identity',positive(d.id)&&d.recipientUserId===recipient);check('Notification content matches run',d.title===title&&d.message==='Local-development API verification '+pm.environment.get('runId'));check('In-app only',d.channel==='IN_APP');check('Unscheduled and not externally sent',d.scheduledAt===null&&d.sentAt===null);}",
+              "function ownPage(d,status){page(d);check('Requested page',d.page===Number(pm.environment.get('inboxPage')));for(const row of d.items){check('Inbox belongs only to signed-in user',row.recipientUserId===eid('adminUserId'));check('Other recipient record absent from admin inbox',row.id!==eid('recipientNotificationId'));if(status)check('Status filter respected',row.status===status);}}",
+              "function stamp(v){if(typeof v!=='string')return null;const m=/^(\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2})(?:\\.(\\d{1,9}))?$/.exec(v);if(!m||!Number.isFinite(Date.parse(m[1]+'Z')))return null;return {n:BigInt(Date.parse(m[1]+'Z'))*1000000n+BigInt((m[2]||'').padEnd(9,'0')),p:(m[2]||'').length};}",
+              "function sameTime(a,b){const x=stamp(a),y=stamp(b);if(!x||!y)return false;const delta=x.n>y.n?x.n-y.n:y.n-x.n;return delta===0n||((x.p>6||y.p>6)&&delta<1000n);}",
+              "",
+              "try{check('HTTP 200',pm.response.code===200);const envelope=pm.response.json();check('ApiResponse success and status',envelope.success===true&&envelope.status===pm.response.code&&Object.hasOwn(envelope,'data'));safe(envelope,false);const d=envelope.data;let repeat=false;",
+              "page(d);check('Directory page matches request',d.page===Number(pm.environment.get('directoryPage')));const kind=pm.environment.get('directoryKind');for(const row of d.items){check('Directory user/profile IDs',positive(row.userId)&&positive(row[kind==='customers'?'customerProfileId':'technicianProfileId']));check('Active directory filter',row.active===true);if(!pm.environment.get('directoryCandidate')&&row.userId!==eid('adminUserId')&&(kind==='technicians'||row.status==='ACTIVE'))pm.environment.set('directoryCandidate',JSON.stringify({userId:row.userId,type:kind}));}",
+              "if(d.page+1<d.totalPages){pm.environment.set('directoryPage',String(d.page+1));repeat=true;}else if(kind==='customers'){pm.environment.set('directoryKind','technicians');pm.environment.set('directoryPage','0');repeat=true;}",
+              "if(repeat)pm.execution.setNextRequest(pm.info.requestName);else{check('Recipient prerequisite: provision an active customer or technician',Boolean(pm.environment.get('directoryCandidate')));const selected=JSON.parse(pm.environment.get('directoryCandidate'));saveId('recipientUserId',selected.userId);pm.environment.set('recipientType',selected.type);check('Recipient differs from current admin',selected.userId!==eid('adminUserId'));}",
+              "if(!repeat)pm.environment.set('lastStep','4');}catch(error){pm.environment.set('runBlocked','Step 4 assertion failed. Inspect assertion names; fix prerequisites and restart at 01.');pm.execution.setNextRequest(null);pm.test('Run stopped after failure',()=>pm.expect(false,'Do not continue a failed run manually.').to.equal(true));}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{adminAccessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/admin/{{directoryKind}}?page={{directoryPage}}&size=100&active=true"
+      }
+    },
+    {
+      "name": "05 - Create notification for selected recipient",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "function block(message){pm.environment.set('runBlocked',message);pm.execution.setNextRequest(null);pm.test('Prerequisites',()=>pm.expect(false,message).to.equal(true));pm.execution.skipRequest();}",
+              "if(pm.environment.get('baseUrl')!=='http://localhost:8081')block('Use only http://localhost:8081 for local development.');",
+              "if(pm.environment.get('runBlocked'))block('Run blocked: fix the prerequisite and restart at 01.');",
+              "if(Number(pm.environment.get('lastStep'))!==4)block('Run the entire collection sequentially from 01 in Collection Runner.');",
+              "if(!Number.isSafeInteger(Number(pm.environment.get('recipientUserId')))||Number(pm.environment.get('recipientUserId'))<=0)block('Recipient selection missing; restart from 01.');pm.variables.set('requestBody',JSON.stringify({recipientUserId:Number(pm.environment.get('recipientUserId')),title:pm.environment.get('runId')+' recipient',message:'Local-development API verification '+pm.environment.get('runId'),channel:'IN_APP',scheduledAt:null}));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "function check(label,condition){pm.test(label,()=>pm.expect(Boolean(condition),label).to.equal(true));if(!condition)throw Error(label);}",
+              "function positive(value){return Number.isSafeInteger(value)&&value>0;}",
+              "function eid(key){return Number(pm.environment.get(key));}",
+              "function saveId(key,value){check('Positive '+key,positive(value));pm.environment.set(key,String(value));}",
+              "function safe(value,auth=false){if(typeof value==='string'){for(const key of (auth?['superAdminPassword']:['superAdminPassword','adminAccessToken','adminRefreshToken'])){const secret=pm.environment.get(key);check('No secret value echoed',!secret||secret!==value);}}if(value&&typeof value==='object')for(const [key,v] of Object.entries(value)){check('No secret field',!['password','passwordHash','otpHash','tokenHash','otp','authorization','stackTrace'].includes(key));if(!auth)check('Operational response has no session tokens',!['accessToken','refreshToken'].includes(key));safe(v,auth);}}",
+              "function page(d){check('Page envelope',Array.isArray(d.items)&&Number.isSafeInteger(d.page)&&Number.isSafeInteger(d.size)&&d.size>0&&Number.isSafeInteger(d.totalElements)&&Number.isSafeInteger(d.totalPages));}",
+              "function notification(d,recipient,title){check('Notification identity',positive(d.id)&&d.recipientUserId===recipient);check('Notification content matches run',d.title===title&&d.message==='Local-development API verification '+pm.environment.get('runId'));check('In-app only',d.channel==='IN_APP');check('Unscheduled and not externally sent',d.scheduledAt===null&&d.sentAt===null);}",
+              "function ownPage(d,status){page(d);check('Requested page',d.page===Number(pm.environment.get('inboxPage')));for(const row of d.items){check('Inbox belongs only to signed-in user',row.recipientUserId===eid('adminUserId'));check('Other recipient record absent from admin inbox',row.id!==eid('recipientNotificationId'));if(status)check('Status filter respected',row.status===status);}}",
+              "function stamp(v){if(typeof v!=='string')return null;const m=/^(\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2})(?:\\.(\\d{1,9}))?$/.exec(v);if(!m||!Number.isFinite(Date.parse(m[1]+'Z')))return null;return {n:BigInt(Date.parse(m[1]+'Z'))*1000000n+BigInt((m[2]||'').padEnd(9,'0')),p:(m[2]||'').length};}",
+              "function sameTime(a,b){const x=stamp(a),y=stamp(b);if(!x||!y)return false;const delta=x.n>y.n?x.n-y.n:y.n-x.n;return delta===0n||((x.p>6||y.p>6)&&delta<1000n);}",
+              "",
+              "try{check('HTTP 200',pm.response.code===200);const envelope=pm.response.json();check('ApiResponse success and status',envelope.success===true&&envelope.status===pm.response.code&&Object.hasOwn(envelope,'data'));safe(envelope,false);const d=envelope.data;let repeat=false;",
+              "const input=JSON.parse(pm.variables.get('requestBody'));check('Exact compose fields',Object.keys(input).sort().join(',')==='channel,message,recipientUserId,scheduledAt,title');check('Canonical user ID submitted',input.recipientUserId===eid('recipientUserId'));notification(d,eid('recipientUserId'),pm.environment.get('runId')+' recipient');check('Created PENDING with null read timestamp',d.status==='PENDING'&&d.readAt===null);saveId('recipientNotificationId',d.id);pm.environment.set('recipientSnapshot',JSON.stringify({id:d.id,recipientUserId:d.recipientUserId,status:d.status,channel:d.channel,scheduledAt:d.scheduledAt,sentAt:d.sentAt,readAt:d.readAt}));",
+              "if(!repeat)pm.environment.set('lastStep','5');}catch(error){pm.environment.set('runBlocked','Step 5 assertion failed. Inspect assertion names; fix prerequisites and restart at 01.');pm.execution.setNextRequest(null);pm.test('Run stopped after failure',()=>pm.expect(false,'Do not continue a failed run manually.').to.equal(true));}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{adminAccessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/notifications",
+        "body": {
+          "mode": "raw",
+          "raw": "{{requestBody}}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "06 - Create notification for current admin",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "function block(message){pm.environment.set('runBlocked',message);pm.execution.setNextRequest(null);pm.test('Prerequisites',()=>pm.expect(false,message).to.equal(true));pm.execution.skipRequest();}",
+              "if(pm.environment.get('baseUrl')!=='http://localhost:8081')block('Use only http://localhost:8081 for local development.');",
+              "if(pm.environment.get('runBlocked'))block('Run blocked: fix the prerequisite and restart at 01.');",
+              "if(Number(pm.environment.get('lastStep'))!==5)block('Run the entire collection sequentially from 01 in Collection Runner.');",
+              "if(!Number.isSafeInteger(Number(pm.environment.get('adminUserId')))||Number(pm.environment.get('adminUserId'))<=0)block('Recipient selection missing; restart from 01.');pm.variables.set('requestBody',JSON.stringify({recipientUserId:Number(pm.environment.get('adminUserId')),title:pm.environment.get('runId')+' self',message:'Local-development API verification '+pm.environment.get('runId'),channel:'IN_APP',scheduledAt:null}));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "function check(label,condition){pm.test(label,()=>pm.expect(Boolean(condition),label).to.equal(true));if(!condition)throw Error(label);}",
+              "function positive(value){return Number.isSafeInteger(value)&&value>0;}",
+              "function eid(key){return Number(pm.environment.get(key));}",
+              "function saveId(key,value){check('Positive '+key,positive(value));pm.environment.set(key,String(value));}",
+              "function safe(value,auth=false){if(typeof value==='string'){for(const key of (auth?['superAdminPassword']:['superAdminPassword','adminAccessToken','adminRefreshToken'])){const secret=pm.environment.get(key);check('No secret value echoed',!secret||secret!==value);}}if(value&&typeof value==='object')for(const [key,v] of Object.entries(value)){check('No secret field',!['password','passwordHash','otpHash','tokenHash','otp','authorization','stackTrace'].includes(key));if(!auth)check('Operational response has no session tokens',!['accessToken','refreshToken'].includes(key));safe(v,auth);}}",
+              "function page(d){check('Page envelope',Array.isArray(d.items)&&Number.isSafeInteger(d.page)&&Number.isSafeInteger(d.size)&&d.size>0&&Number.isSafeInteger(d.totalElements)&&Number.isSafeInteger(d.totalPages));}",
+              "function notification(d,recipient,title){check('Notification identity',positive(d.id)&&d.recipientUserId===recipient);check('Notification content matches run',d.title===title&&d.message==='Local-development API verification '+pm.environment.get('runId'));check('In-app only',d.channel==='IN_APP');check('Unscheduled and not externally sent',d.scheduledAt===null&&d.sentAt===null);}",
+              "function ownPage(d,status){page(d);check('Requested page',d.page===Number(pm.environment.get('inboxPage')));for(const row of d.items){check('Inbox belongs only to signed-in user',row.recipientUserId===eid('adminUserId'));check('Other recipient record absent from admin inbox',row.id!==eid('recipientNotificationId'));if(status)check('Status filter respected',row.status===status);}}",
+              "function stamp(v){if(typeof v!=='string')return null;const m=/^(\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2})(?:\\.(\\d{1,9}))?$/.exec(v);if(!m||!Number.isFinite(Date.parse(m[1]+'Z')))return null;return {n:BigInt(Date.parse(m[1]+'Z'))*1000000n+BigInt((m[2]||'').padEnd(9,'0')),p:(m[2]||'').length};}",
+              "function sameTime(a,b){const x=stamp(a),y=stamp(b);if(!x||!y)return false;const delta=x.n>y.n?x.n-y.n:y.n-x.n;return delta===0n||((x.p>6||y.p>6)&&delta<1000n);}",
+              "",
+              "try{check('HTTP 200',pm.response.code===200);const envelope=pm.response.json();check('ApiResponse success and status',envelope.success===true&&envelope.status===pm.response.code&&Object.hasOwn(envelope,'data'));safe(envelope,false);const d=envelope.data;let repeat=false;",
+              "notification(d,eid('adminUserId'),pm.environment.get('runId')+' self');check('Self notification pending',d.status==='PENDING'&&d.readAt===null);saveId('selfNotificationId',d.id);check('Separate retained records',d.id!==eid('recipientNotificationId'));pm.environment.set('inboxPage','0');pm.environment.set('selfFound','');",
+              "if(!repeat)pm.environment.set('lastStep','6');}catch(error){pm.environment.set('runBlocked','Step 6 assertion failed. Inspect assertion names; fix prerequisites and restart at 01.');pm.execution.setNextRequest(null);pm.test('Run stopped after failure',()=>pm.expect(false,'Do not continue a failed run manually.').to.equal(true));}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{adminAccessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/notifications",
+        "body": {
+          "mode": "raw",
+          "raw": "{{requestBody}}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "07 - Current admin inbox contains self notification",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "function block(message){pm.environment.set('runBlocked',message);pm.execution.setNextRequest(null);pm.test('Prerequisites',()=>pm.expect(false,message).to.equal(true));pm.execution.skipRequest();}",
+              "if(pm.environment.get('baseUrl')!=='http://localhost:8081')block('Use only http://localhost:8081 for local development.');",
+              "if(pm.environment.get('runBlocked'))block('Run blocked: fix the prerequisite and restart at 01.');",
+              "if(Number(pm.environment.get('lastStep'))!==6)block('Run the entire collection sequentially from 01 in Collection Runner.');",
+              ""
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "function check(label,condition){pm.test(label,()=>pm.expect(Boolean(condition),label).to.equal(true));if(!condition)throw Error(label);}",
+              "function positive(value){return Number.isSafeInteger(value)&&value>0;}",
+              "function eid(key){return Number(pm.environment.get(key));}",
+              "function saveId(key,value){check('Positive '+key,positive(value));pm.environment.set(key,String(value));}",
+              "function safe(value,auth=false){if(typeof value==='string'){for(const key of (auth?['superAdminPassword']:['superAdminPassword','adminAccessToken','adminRefreshToken'])){const secret=pm.environment.get(key);check('No secret value echoed',!secret||secret!==value);}}if(value&&typeof value==='object')for(const [key,v] of Object.entries(value)){check('No secret field',!['password','passwordHash','otpHash','tokenHash','otp','authorization','stackTrace'].includes(key));if(!auth)check('Operational response has no session tokens',!['accessToken','refreshToken'].includes(key));safe(v,auth);}}",
+              "function page(d){check('Page envelope',Array.isArray(d.items)&&Number.isSafeInteger(d.page)&&Number.isSafeInteger(d.size)&&d.size>0&&Number.isSafeInteger(d.totalElements)&&Number.isSafeInteger(d.totalPages));}",
+              "function notification(d,recipient,title){check('Notification identity',positive(d.id)&&d.recipientUserId===recipient);check('Notification content matches run',d.title===title&&d.message==='Local-development API verification '+pm.environment.get('runId'));check('In-app only',d.channel==='IN_APP');check('Unscheduled and not externally sent',d.scheduledAt===null&&d.sentAt===null);}",
+              "function ownPage(d,status){page(d);check('Requested page',d.page===Number(pm.environment.get('inboxPage')));for(const row of d.items){check('Inbox belongs only to signed-in user',row.recipientUserId===eid('adminUserId'));check('Other recipient record absent from admin inbox',row.id!==eid('recipientNotificationId'));if(status)check('Status filter respected',row.status===status);}}",
+              "function stamp(v){if(typeof v!=='string')return null;const m=/^(\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2})(?:\\.(\\d{1,9}))?$/.exec(v);if(!m||!Number.isFinite(Date.parse(m[1]+'Z')))return null;return {n:BigInt(Date.parse(m[1]+'Z'))*1000000n+BigInt((m[2]||'').padEnd(9,'0')),p:(m[2]||'').length};}",
+              "function sameTime(a,b){const x=stamp(a),y=stamp(b);if(!x||!y)return false;const delta=x.n>y.n?x.n-y.n:y.n-x.n;return delta===0n||((x.p>6||y.p>6)&&delta<1000n);}",
+              "",
+              "try{check('HTTP 200',pm.response.code===200);const envelope=pm.response.json();check('ApiResponse success and status',envelope.success===true&&envelope.status===pm.response.code&&Object.hasOwn(envelope,'data'));safe(envelope,false);const d=envelope.data;let repeat=false;",
+              "ownPage(d,\"\");const row=d.items.find(item=>item.id===eid('selfNotificationId'));if(row){notification(row,eid('adminUserId'),pm.environment.get('runId')+' self');check('Self notification state',row.status==='PENDING');check('Unread timestamp null',row.readAt===null);pm.environment.set('selfFound','true');}",
+              "if(d.page+1<d.totalPages){pm.environment.set('inboxPage',String(d.page+1));pm.execution.setNextRequest(pm.info.requestName);repeat=true;}else{check('Self notification found in current admin inbox',pm.environment.get('selfFound')==='true');pm.environment.set('inboxPage','0');pm.environment.set('selfFound','');}",
+              "if(!repeat)pm.environment.set('lastStep','7');}catch(error){pm.environment.set('runBlocked','Step 7 assertion failed. Inspect assertion names; fix prerequisites and restart at 01.');pm.execution.setNextRequest(null);pm.test('Run stopped after failure',()=>pm.expect(false,'Do not continue a failed run manually.').to.equal(true));}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{adminAccessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/notifications?page={{inboxPage}}&size=100"
+      }
+    },
+    {
+      "name": "08 - Filter current admin inbox by PENDING",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "function block(message){pm.environment.set('runBlocked',message);pm.execution.setNextRequest(null);pm.test('Prerequisites',()=>pm.expect(false,message).to.equal(true));pm.execution.skipRequest();}",
+              "if(pm.environment.get('baseUrl')!=='http://localhost:8081')block('Use only http://localhost:8081 for local development.');",
+              "if(pm.environment.get('runBlocked'))block('Run blocked: fix the prerequisite and restart at 01.');",
+              "if(Number(pm.environment.get('lastStep'))!==7)block('Run the entire collection sequentially from 01 in Collection Runner.');",
+              ""
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "function check(label,condition){pm.test(label,()=>pm.expect(Boolean(condition),label).to.equal(true));if(!condition)throw Error(label);}",
+              "function positive(value){return Number.isSafeInteger(value)&&value>0;}",
+              "function eid(key){return Number(pm.environment.get(key));}",
+              "function saveId(key,value){check('Positive '+key,positive(value));pm.environment.set(key,String(value));}",
+              "function safe(value,auth=false){if(typeof value==='string'){for(const key of (auth?['superAdminPassword']:['superAdminPassword','adminAccessToken','adminRefreshToken'])){const secret=pm.environment.get(key);check('No secret value echoed',!secret||secret!==value);}}if(value&&typeof value==='object')for(const [key,v] of Object.entries(value)){check('No secret field',!['password','passwordHash','otpHash','tokenHash','otp','authorization','stackTrace'].includes(key));if(!auth)check('Operational response has no session tokens',!['accessToken','refreshToken'].includes(key));safe(v,auth);}}",
+              "function page(d){check('Page envelope',Array.isArray(d.items)&&Number.isSafeInteger(d.page)&&Number.isSafeInteger(d.size)&&d.size>0&&Number.isSafeInteger(d.totalElements)&&Number.isSafeInteger(d.totalPages));}",
+              "function notification(d,recipient,title){check('Notification identity',positive(d.id)&&d.recipientUserId===recipient);check('Notification content matches run',d.title===title&&d.message==='Local-development API verification '+pm.environment.get('runId'));check('In-app only',d.channel==='IN_APP');check('Unscheduled and not externally sent',d.scheduledAt===null&&d.sentAt===null);}",
+              "function ownPage(d,status){page(d);check('Requested page',d.page===Number(pm.environment.get('inboxPage')));for(const row of d.items){check('Inbox belongs only to signed-in user',row.recipientUserId===eid('adminUserId'));check('Other recipient record absent from admin inbox',row.id!==eid('recipientNotificationId'));if(status)check('Status filter respected',row.status===status);}}",
+              "function stamp(v){if(typeof v!=='string')return null;const m=/^(\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2})(?:\\.(\\d{1,9}))?$/.exec(v);if(!m||!Number.isFinite(Date.parse(m[1]+'Z')))return null;return {n:BigInt(Date.parse(m[1]+'Z'))*1000000n+BigInt((m[2]||'').padEnd(9,'0')),p:(m[2]||'').length};}",
+              "function sameTime(a,b){const x=stamp(a),y=stamp(b);if(!x||!y)return false;const delta=x.n>y.n?x.n-y.n:y.n-x.n;return delta===0n||((x.p>6||y.p>6)&&delta<1000n);}",
+              "",
+              "try{check('HTTP 200',pm.response.code===200);const envelope=pm.response.json();check('ApiResponse success and status',envelope.success===true&&envelope.status===pm.response.code&&Object.hasOwn(envelope,'data'));safe(envelope,false);const d=envelope.data;let repeat=false;",
+              "ownPage(d,\"PENDING\");const row=d.items.find(item=>item.id===eid('selfNotificationId'));if(row){notification(row,eid('adminUserId'),pm.environment.get('runId')+' self');check('Self notification state',row.status==='PENDING');check('Unread timestamp null',row.readAt===null);pm.environment.set('selfFound','true');}",
+              "if(d.page+1<d.totalPages){pm.environment.set('inboxPage',String(d.page+1));pm.execution.setNextRequest(pm.info.requestName);repeat=true;}else{check('Self notification found in current admin inbox',pm.environment.get('selfFound')==='true');pm.environment.set('inboxPage','0');pm.environment.set('selfFound','');}",
+              "if(!repeat)pm.environment.set('lastStep','8');}catch(error){pm.environment.set('runBlocked','Step 8 assertion failed. Inspect assertion names; fix prerequisites and restart at 01.');pm.execution.setNextRequest(null);pm.test('Run stopped after failure',()=>pm.expect(false,'Do not continue a failed run manually.').to.equal(true));}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{adminAccessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/notifications?page={{inboxPage}}&size=100&status=PENDING"
+      }
+    },
+    {
+      "name": "09 - Mark self notification read",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "function block(message){pm.environment.set('runBlocked',message);pm.execution.setNextRequest(null);pm.test('Prerequisites',()=>pm.expect(false,message).to.equal(true));pm.execution.skipRequest();}",
+              "if(pm.environment.get('baseUrl')!=='http://localhost:8081')block('Use only http://localhost:8081 for local development.');",
+              "if(pm.environment.get('runBlocked'))block('Run blocked: fix the prerequisite and restart at 01.');",
+              "if(Number(pm.environment.get('lastStep'))!==8)block('Run the entire collection sequentially from 01 in Collection Runner.');",
+              ""
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "function check(label,condition){pm.test(label,()=>pm.expect(Boolean(condition),label).to.equal(true));if(!condition)throw Error(label);}",
+              "function positive(value){return Number.isSafeInteger(value)&&value>0;}",
+              "function eid(key){return Number(pm.environment.get(key));}",
+              "function saveId(key,value){check('Positive '+key,positive(value));pm.environment.set(key,String(value));}",
+              "function safe(value,auth=false){if(typeof value==='string'){for(const key of (auth?['superAdminPassword']:['superAdminPassword','adminAccessToken','adminRefreshToken'])){const secret=pm.environment.get(key);check('No secret value echoed',!secret||secret!==value);}}if(value&&typeof value==='object')for(const [key,v] of Object.entries(value)){check('No secret field',!['password','passwordHash','otpHash','tokenHash','otp','authorization','stackTrace'].includes(key));if(!auth)check('Operational response has no session tokens',!['accessToken','refreshToken'].includes(key));safe(v,auth);}}",
+              "function page(d){check('Page envelope',Array.isArray(d.items)&&Number.isSafeInteger(d.page)&&Number.isSafeInteger(d.size)&&d.size>0&&Number.isSafeInteger(d.totalElements)&&Number.isSafeInteger(d.totalPages));}",
+              "function notification(d,recipient,title){check('Notification identity',positive(d.id)&&d.recipientUserId===recipient);check('Notification content matches run',d.title===title&&d.message==='Local-development API verification '+pm.environment.get('runId'));check('In-app only',d.channel==='IN_APP');check('Unscheduled and not externally sent',d.scheduledAt===null&&d.sentAt===null);}",
+              "function ownPage(d,status){page(d);check('Requested page',d.page===Number(pm.environment.get('inboxPage')));for(const row of d.items){check('Inbox belongs only to signed-in user',row.recipientUserId===eid('adminUserId'));check('Other recipient record absent from admin inbox',row.id!==eid('recipientNotificationId'));if(status)check('Status filter respected',row.status===status);}}",
+              "function stamp(v){if(typeof v!=='string')return null;const m=/^(\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2})(?:\\.(\\d{1,9}))?$/.exec(v);if(!m||!Number.isFinite(Date.parse(m[1]+'Z')))return null;return {n:BigInt(Date.parse(m[1]+'Z'))*1000000n+BigInt((m[2]||'').padEnd(9,'0')),p:(m[2]||'').length};}",
+              "function sameTime(a,b){const x=stamp(a),y=stamp(b);if(!x||!y)return false;const delta=x.n>y.n?x.n-y.n:y.n-x.n;return delta===0n||((x.p>6||y.p>6)&&delta<1000n);}",
+              "",
+              "try{check('HTTP 200',pm.response.code===200);const envelope=pm.response.json();check('ApiResponse success and status',envelope.success===true&&envelope.status===pm.response.code&&Object.hasOwn(envelope,'data'));safe(envelope,false);const d=envelope.data;let repeat=false;",
+              "notification(d,eid('adminUserId'),pm.environment.get('runId')+' self');check('Read ID unchanged',d.id===eid('selfNotificationId'));check('READ with valid timestamp',d.status==='READ'&&Boolean(stamp(d.readAt)));pm.environment.set('selfReadAt',d.readAt);pm.environment.set('inboxPage','0');pm.environment.set('selfFound','');",
+              "if(!repeat)pm.environment.set('lastStep','9');}catch(error){pm.environment.set('runBlocked','Step 9 assertion failed. Inspect assertion names; fix prerequisites and restart at 01.');pm.execution.setNextRequest(null);pm.test('Run stopped after failure',()=>pm.expect(false,'Do not continue a failed run manually.').to.equal(true));}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{adminAccessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/notifications/{{selfNotificationId}}/read"
+      }
+    },
+    {
+      "name": "10 - Filter READ inbox and confirm persisted read state",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "function block(message){pm.environment.set('runBlocked',message);pm.execution.setNextRequest(null);pm.test('Prerequisites',()=>pm.expect(false,message).to.equal(true));pm.execution.skipRequest();}",
+              "if(pm.environment.get('baseUrl')!=='http://localhost:8081')block('Use only http://localhost:8081 for local development.');",
+              "if(pm.environment.get('runBlocked'))block('Run blocked: fix the prerequisite and restart at 01.');",
+              "if(Number(pm.environment.get('lastStep'))!==9)block('Run the entire collection sequentially from 01 in Collection Runner.');",
+              ""
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "function check(label,condition){pm.test(label,()=>pm.expect(Boolean(condition),label).to.equal(true));if(!condition)throw Error(label);}",
+              "function positive(value){return Number.isSafeInteger(value)&&value>0;}",
+              "function eid(key){return Number(pm.environment.get(key));}",
+              "function saveId(key,value){check('Positive '+key,positive(value));pm.environment.set(key,String(value));}",
+              "function safe(value,auth=false){if(typeof value==='string'){for(const key of (auth?['superAdminPassword']:['superAdminPassword','adminAccessToken','adminRefreshToken'])){const secret=pm.environment.get(key);check('No secret value echoed',!secret||secret!==value);}}if(value&&typeof value==='object')for(const [key,v] of Object.entries(value)){check('No secret field',!['password','passwordHash','otpHash','tokenHash','otp','authorization','stackTrace'].includes(key));if(!auth)check('Operational response has no session tokens',!['accessToken','refreshToken'].includes(key));safe(v,auth);}}",
+              "function page(d){check('Page envelope',Array.isArray(d.items)&&Number.isSafeInteger(d.page)&&Number.isSafeInteger(d.size)&&d.size>0&&Number.isSafeInteger(d.totalElements)&&Number.isSafeInteger(d.totalPages));}",
+              "function notification(d,recipient,title){check('Notification identity',positive(d.id)&&d.recipientUserId===recipient);check('Notification content matches run',d.title===title&&d.message==='Local-development API verification '+pm.environment.get('runId'));check('In-app only',d.channel==='IN_APP');check('Unscheduled and not externally sent',d.scheduledAt===null&&d.sentAt===null);}",
+              "function ownPage(d,status){page(d);check('Requested page',d.page===Number(pm.environment.get('inboxPage')));for(const row of d.items){check('Inbox belongs only to signed-in user',row.recipientUserId===eid('adminUserId'));check('Other recipient record absent from admin inbox',row.id!==eid('recipientNotificationId'));if(status)check('Status filter respected',row.status===status);}}",
+              "function stamp(v){if(typeof v!=='string')return null;const m=/^(\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2})(?:\\.(\\d{1,9}))?$/.exec(v);if(!m||!Number.isFinite(Date.parse(m[1]+'Z')))return null;return {n:BigInt(Date.parse(m[1]+'Z'))*1000000n+BigInt((m[2]||'').padEnd(9,'0')),p:(m[2]||'').length};}",
+              "function sameTime(a,b){const x=stamp(a),y=stamp(b);if(!x||!y)return false;const delta=x.n>y.n?x.n-y.n:y.n-x.n;return delta===0n||((x.p>6||y.p>6)&&delta<1000n);}",
+              "",
+              "try{check('HTTP 200',pm.response.code===200);const envelope=pm.response.json();check('ApiResponse success and status',envelope.success===true&&envelope.status===pm.response.code&&Object.hasOwn(envelope,'data'));safe(envelope,false);const d=envelope.data;let repeat=false;",
+              "ownPage(d,\"READ\");const row=d.items.find(item=>item.id===eid('selfNotificationId'));if(row){notification(row,eid('adminUserId'),pm.environment.get('runId')+' self');check('Self notification state',row.status==='READ');check('Read timestamp agrees with write/read precision',sameTime(row.readAt,pm.environment.get('selfReadAt')));pm.environment.set('selfReadAt',row.readAt);pm.environment.set('selfFound','true');}",
+              "if(d.page+1<d.totalPages){pm.environment.set('inboxPage',String(d.page+1));pm.execution.setNextRequest(pm.info.requestName);repeat=true;}else{check('Self notification found in current admin inbox',pm.environment.get('selfFound')==='true');pm.environment.set('inboxPage','0');pm.environment.set('selfFound','');}",
+              "if(!repeat)pm.environment.set('lastStep','10');}catch(error){pm.environment.set('runBlocked','Step 10 assertion failed. Inspect assertion names; fix prerequisites and restart at 01.');pm.execution.setNextRequest(null);pm.test('Run stopped after failure',()=>pm.expect(false,'Do not continue a failed run manually.').to.equal(true));}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{adminAccessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/notifications?page={{inboxPage}}&size=100&status=READ"
+      }
+    },
+    {
+      "name": "11 - Final notification integrity",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "function block(message){pm.environment.set('runBlocked',message);pm.execution.setNextRequest(null);pm.test('Prerequisites',()=>pm.expect(false,message).to.equal(true));pm.execution.skipRequest();}",
+              "if(pm.environment.get('baseUrl')!=='http://localhost:8081')block('Use only http://localhost:8081 for local development.');",
+              "if(pm.environment.get('runBlocked'))block('Run blocked: fix the prerequisite and restart at 01.');",
+              "if(Number(pm.environment.get('lastStep'))!==10)block('Run the entire collection sequentially from 01 in Collection Runner.');",
+              ""
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "function check(label,condition){pm.test(label,()=>pm.expect(Boolean(condition),label).to.equal(true));if(!condition)throw Error(label);}",
+              "function positive(value){return Number.isSafeInteger(value)&&value>0;}",
+              "function eid(key){return Number(pm.environment.get(key));}",
+              "function saveId(key,value){check('Positive '+key,positive(value));pm.environment.set(key,String(value));}",
+              "function safe(value,auth=false){if(typeof value==='string'){for(const key of (auth?['superAdminPassword']:['superAdminPassword','adminAccessToken','adminRefreshToken'])){const secret=pm.environment.get(key);check('No secret value echoed',!secret||secret!==value);}}if(value&&typeof value==='object')for(const [key,v] of Object.entries(value)){check('No secret field',!['password','passwordHash','otpHash','tokenHash','otp','authorization','stackTrace'].includes(key));if(!auth)check('Operational response has no session tokens',!['accessToken','refreshToken'].includes(key));safe(v,auth);}}",
+              "function page(d){check('Page envelope',Array.isArray(d.items)&&Number.isSafeInteger(d.page)&&Number.isSafeInteger(d.size)&&d.size>0&&Number.isSafeInteger(d.totalElements)&&Number.isSafeInteger(d.totalPages));}",
+              "function notification(d,recipient,title){check('Notification identity',positive(d.id)&&d.recipientUserId===recipient);check('Notification content matches run',d.title===title&&d.message==='Local-development API verification '+pm.environment.get('runId'));check('In-app only',d.channel==='IN_APP');check('Unscheduled and not externally sent',d.scheduledAt===null&&d.sentAt===null);}",
+              "function ownPage(d,status){page(d);check('Requested page',d.page===Number(pm.environment.get('inboxPage')));for(const row of d.items){check('Inbox belongs only to signed-in user',row.recipientUserId===eid('adminUserId'));check('Other recipient record absent from admin inbox',row.id!==eid('recipientNotificationId'));if(status)check('Status filter respected',row.status===status);}}",
+              "function stamp(v){if(typeof v!=='string')return null;const m=/^(\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2})(?:\\.(\\d{1,9}))?$/.exec(v);if(!m||!Number.isFinite(Date.parse(m[1]+'Z')))return null;return {n:BigInt(Date.parse(m[1]+'Z'))*1000000n+BigInt((m[2]||'').padEnd(9,'0')),p:(m[2]||'').length};}",
+              "function sameTime(a,b){const x=stamp(a),y=stamp(b);if(!x||!y)return false;const delta=x.n>y.n?x.n-y.n:y.n-x.n;return delta===0n||((x.p>6||y.p>6)&&delta<1000n);}",
+              "",
+              "try{check('HTTP 200',pm.response.code===200);const envelope=pm.response.json();check('ApiResponse success and status',envelope.success===true&&envelope.status===pm.response.code&&Object.hasOwn(envelope,'data'));safe(envelope,false);const d=envelope.data;let repeat=false;",
+              "ownPage(d,\"READ\");const row=d.items.find(item=>item.id===eid('selfNotificationId'));if(row){notification(row,eid('adminUserId'),pm.environment.get('runId')+' self');check('Self notification state',row.status==='READ');check('Read timestamp agrees with write/read precision',sameTime(row.readAt,pm.environment.get('selfReadAt')));pm.environment.set('selfReadAt',row.readAt);pm.environment.set('selfFound','true');}",
+              "if(d.page+1<d.totalPages){pm.environment.set('inboxPage',String(d.page+1));pm.execution.setNextRequest(pm.info.requestName);repeat=true;}else{check('Self notification found in current admin inbox',pm.environment.get('selfFound')==='true');pm.environment.set('inboxPage','0');pm.environment.set('selfFound','');const created=JSON.parse(pm.environment.get('recipientSnapshot'));check('Recipient create response maps selected user',created.id===eid('recipientNotificationId')&&created.recipientUserId===eid('recipientUserId')&&created.recipientUserId!==eid('adminUserId'));check('Recipient creation was IN_APP/PENDING, not sent',created.channel==='IN_APP'&&created.status==='PENDING'&&created.sentAt===null&&created.readAt===null&&created.scheduledAt===null);check('No blocked assertions',!pm.environment.get('runBlocked'));pm.execution.setNextRequest(null);}",
+              "if(!repeat)pm.environment.set('lastStep','11');}catch(error){pm.environment.set('runBlocked','Step 11 assertion failed. Inspect assertion names; fix prerequisites and restart at 01.');pm.execution.setNextRequest(null);pm.test('Run stopped after failure',()=>pm.expect(false,'Do not continue a failed run manually.').to.equal(true));}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{adminAccessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/notifications?page={{inboxPage}}&size=100&status=READ"
+      }
+    }
+  ]
+}
