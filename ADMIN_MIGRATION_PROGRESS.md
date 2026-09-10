@@ -1,6 +1,6 @@
 # Admin Portal Stage 2 implementation - 10 September 2026
 
-- Branch: authorized `master`; no branch operations or push. Stage 1 remains accepted. Stage 2 implementation is complete with automated validation; live acceptance remains pending.
+- Branch: authorized `master`; no branch operations or push. Stage 1 remains accepted. Stage 2 implementation and live verification are complete; Stage 2 is accepted based on the user-confirmed manual observations recorded below.
 - Scope: Buildings, Lifts, AMC contracts and backend-supported staff provisioning. Reuses the Stage 1 HTTP/session client; no duplicate token or refresh handling and no new dependencies.
 
 | Screen action | Backend route (client adds `/api/v1`) |
@@ -21,9 +21,25 @@
 - Removed active assumptions: legacy generic module wiring (/api/amcs, /api/admin, /api/customers), mock/fallback records, duplicate lift customer ownership, unsupported staff directory and unrestricted role selection. Retired adminModules.jsx remains unimported; it is not a fallback. The shell/style is retained, with focused form/table/error styling.
 - Tests: full `npm test` passed with 41 tests, zero failures/skips (25 existing plus 16 Stage 2 cases). `npm run build` passed. No lint/type-check scripts are configured. Existing Node test runner and Vite server-render tests were reused. Coverage includes list/create/update/deactivate, AMC renewal, constraints/nulls, shared envelopes/401 refresh/403 errors, confirmations, staff constraints and password exclusion, and active-source regression scans.
 - Files: src/api/assets.js, src/api/runtime.js, src/assetModules.jsx, src/assetModules.css, src/main.jsx, test/assets.test.js, test/views.test.js, and this record.
-- Live verification: not performed; no HTTP requests to the backend or databases. Tests use fake transport responses and server-rendered views. Next: verify retained-record asset creation/edit/deactivation and AMC renewal plus SUPER_ADMIN provisioning against the local backend using private credentials, then record acceptance.
+- Live verification: completed manually by the user against the running local backend and MySQL development database; see the acceptance record below. Automated tests use fake transport responses and server-rendered views and are separate evidence.
 - Deferred: customer management/directory, service workflow/emergency/schedule, technician assignments, notifications, payments/invoices, inventory, reports/exports, roles/audit/settings and all unsupported staff capabilities. No deferred module was connected to guessed routes.
 - Safety: README.md remains preserved/unstaged and excluded. Backend contract/progress/DTO sources were read only to reconcile exact supported fields. No backend changes, migration/database access, Android/technician/website changes or secret values committed.
+
+## Stage 2 live verification accepted - 10 September 2026
+
+Implementation: `6be90d4` on authorized `master`. The user confirmed these live browser results; this documentation follow-up does not claim independent browser observation by the assistant.
+
+- Buildings: list, create, update and disposable deletion passed.
+- Lifts: list, create, update and disposable deletion passed.
+- AMC contracts: list, create and renewal passed.
+- Staff: technician creation and deactivation passed; the password was not displayed after creation.
+- The retained Building -> Lift -> AMC chain remained visible after page refresh. Retained/disposable IDs were not supplied and are not invented or required for this acceptance record.
+- All observed API requests used `/api/v1` and returned successful responses. No red browser-console application errors were observed.
+- The endpoint mapping above identifies the implemented operations. No additional live negative-case, concurrent-refresh or unsupported-action checks are claimed beyond the user's observations and existing automated coverage.
+- Validation baseline remains 41 passing portal tests and a passing production build from the implementation commit. Tests/build were not rerun for this documentation-only change.
+- No code defect was reported and no code fix was needed. Stage 2 live acceptance is complete. Unsupported staff directory/search/detail/edit/reactivation and other deferred modules remain outside this stage.
+- Push readiness: implementation and this documentation commit are ready for an explicitly authorized push of `master`; no push was performed. No later stage was started.
+- This follow-up changes only this progress document. The unrelated unstaged README.md modification is preserved and excluded. No backend, database, migration or other client repository was accessed or modified; `valor_lift_db` was untouched. No passwords, tokens, OTPs, headers or other credentials are recorded.
 
 ## Historical Stage 1 records
 
