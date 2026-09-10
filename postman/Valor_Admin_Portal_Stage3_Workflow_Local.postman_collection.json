@@ -1,0 +1,907 @@
+{
+  "info": {
+    "name": "Valor Admin Portal Stage 3A - LOCAL DEVELOPMENT ONLY",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Local-development API verification only, NOT browser/UI verification. Only http://localhost:8081 is permitted. Run all 15 requests in Collection Runner, one iteration, sequentially. Requires existing active customer/building/lift chain and technician. Directories/list pages repeat automatically. Customer/building selection may advance to another live eligible candidate to find a complete chain. The unique retained request ends ACCEPTED; no deletion, report writing or technician-only endpoint is used. Stop on failures, inspect assertion names, repair prerequisites, then restart at 01; never resume after failure. Set credentials only as private local environment values; do not export populated environments or save response examples. Postman itself can retain sensitive network data; do not share run exports or console captures. Negative coverage: a token-free GET /me asserts 401; role-based 403 is not exercised because this collection uses only SUPER_ADMIN and does not provision additional identities."
+  },
+  "item": [
+    {
+      "name": "01 - Health",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "for(const k of [\"adminAccessToken\",\"adminRefreshToken\",\"runId\",\"customerProfileId\",\"technicianProfileId\",\"buildingId\",\"liftId\",\"serviceRequestId\",\"assignmentId\",\"runBlocked\",\"lastStep\",\"customerCandidates\",\"buildingCandidates\",\"directoryPage\",\"listPage\",\"initialHistory\",\"assignedHistory\",\"updatedHistory\"])pm.environment.unset(k);pm.environment.set('runId','PORTAL-STAGE3A-'+Date.now()+'-'+pm.variables.replaceIn('{{$randomUUID}}'));pm.environment.set('lastStep','0');",
+              "function block(message){pm.environment.set('runBlocked',message);pm.execution.setNextRequest(null);pm.test('Prerequisites',()=>pm.expect(false,message).to.equal(true));pm.execution.skipRequest();}",
+              "if(pm.environment.get('baseUrl')!=='http://localhost:8081')block('Use only the local backend origin http://localhost:8081.');",
+              "if(pm.environment.get('runBlocked'))block('Run is blocked. Restart the complete collection after resolving the failure.');",
+              "if(Number(pm.environment.get('lastStep'))!==1-1)block('Run all requests in order using Collection Runner, beginning at 01.');",
+              ""
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "function check(label,condition){pm.test(label,()=>pm.expect(Boolean(condition),label).to.equal(true));if(!condition)throw Error(label);}",
+              "function positive(value){return Number.isSafeInteger(value)&&value>0;}",
+              "function envId(key){return Number(pm.environment.get(key));}",
+              "function saveId(key,value){check('Valid '+key,positive(value));pm.environment.set(key,String(value));}",
+              "function safe(value,auth=false){if(typeof value==='string'){for(const key of (auth?['superAdminPassword']:['superAdminPassword','adminAccessToken','adminRefreshToken'])){const secret=pm.environment.get(key);check('No secret value echoed',!secret||value!==secret);}}if(value&&typeof value==='object')for(const [key,v] of Object.entries(value)){check('No forbidden secret field',!['password','passwordHash','otpHash','tokenHash','otp','authorization','stackTrace'].includes(key));if(!auth)check('No session secrets in operational response',!['accessToken','refreshToken'].includes(key));safe(v,auth);}}",
+              "function history(d){check('History is an array',Array.isArray(d.history));const ids=new Set();for(const h of d.history){check('History IDs unique',positive(h.id)&&!ids.has(h.id));ids.add(h.id);check('History contains real transitions',h.fromStatus==null||h.fromStatus!==h.toStatus);}return d.history;}",
+              "function ownership(d){check('Request identity and ownership',d.request.id===envId('serviceRequestId')&&d.request.customerProfileId===envId('customerProfileId')&&d.request.liftId===envId('liftId'));}",
+              "function assignment(d){check('Authoritative assignment maps selected technician',d.activeAssignment&&d.activeAssignment.id===envId('assignmentId')&&d.activeAssignment.technicianProfileId===envId('technicianProfileId')&&d.activeAssignment.serviceRequestId===envId('serviceRequestId'));}",
+              "function page(d){check('Valid page shape',Array.isArray(d.items)&&Number.isSafeInteger(d.page)&&Number.isSafeInteger(d.size)&&d.size>0&&Number.isSafeInteger(d.totalElements)&&Number.isSafeInteger(d.totalPages));}",
+              "",
+              "try{check('HTTP 200',pm.response.code===200);const envelope=pm.response.json();check('ApiResponse success/status',envelope.success===true&&envelope.status===pm.response.code&&Object.hasOwn(envelope,'data'));safe(envelope,false);const d=envelope.data;let repeat=false;",
+              "check('Healthy backend',d.status==='UP');",
+              "if(!repeat)pm.environment.set('lastStep','1');",
+              "}catch(error){pm.environment.set('runBlocked','Request 1 failed. Review assertion names, fix local prerequisites and restart at 01.');pm.execution.setNextRequest(null);pm.test('Run stopped after failure',()=>pm.expect(false,'Verification failed; do not continue manually.').to.equal(true));}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/health"
+      }
+    },
+    {
+      "name": "02 - Admin login",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "function block(message){pm.environment.set('runBlocked',message);pm.execution.setNextRequest(null);pm.test('Prerequisites',()=>pm.expect(false,message).to.equal(true));pm.execution.skipRequest();}",
+              "if(pm.environment.get('baseUrl')!=='http://localhost:8081')block('Use only the local backend origin http://localhost:8081.');",
+              "if(pm.environment.get('runBlocked'))block('Run is blocked. Restart the complete collection after resolving the failure.');",
+              "if(Number(pm.environment.get('lastStep'))!==2-1)block('Run all requests in order using Collection Runner, beginning at 01.');",
+              "if(!pm.environment.get('superAdminEmail')||!pm.environment.get('superAdminPassword'))block('Enter local SUPER_ADMIN credentials privately in the selected environment.');pm.variables.set('requestBody',JSON.stringify({email:pm.environment.get('superAdminEmail'),password:pm.environment.get('superAdminPassword')}));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "function check(label,condition){pm.test(label,()=>pm.expect(Boolean(condition),label).to.equal(true));if(!condition)throw Error(label);}",
+              "function positive(value){return Number.isSafeInteger(value)&&value>0;}",
+              "function envId(key){return Number(pm.environment.get(key));}",
+              "function saveId(key,value){check('Valid '+key,positive(value));pm.environment.set(key,String(value));}",
+              "function safe(value,auth=false){if(typeof value==='string'){for(const key of (auth?['superAdminPassword']:['superAdminPassword','adminAccessToken','adminRefreshToken'])){const secret=pm.environment.get(key);check('No secret value echoed',!secret||value!==secret);}}if(value&&typeof value==='object')for(const [key,v] of Object.entries(value)){check('No forbidden secret field',!['password','passwordHash','otpHash','tokenHash','otp','authorization','stackTrace'].includes(key));if(!auth)check('No session secrets in operational response',!['accessToken','refreshToken'].includes(key));safe(v,auth);}}",
+              "function history(d){check('History is an array',Array.isArray(d.history));const ids=new Set();for(const h of d.history){check('History IDs unique',positive(h.id)&&!ids.has(h.id));ids.add(h.id);check('History contains real transitions',h.fromStatus==null||h.fromStatus!==h.toStatus);}return d.history;}",
+              "function ownership(d){check('Request identity and ownership',d.request.id===envId('serviceRequestId')&&d.request.customerProfileId===envId('customerProfileId')&&d.request.liftId===envId('liftId'));}",
+              "function assignment(d){check('Authoritative assignment maps selected technician',d.activeAssignment&&d.activeAssignment.id===envId('assignmentId')&&d.activeAssignment.technicianProfileId===envId('technicianProfileId')&&d.activeAssignment.serviceRequestId===envId('serviceRequestId'));}",
+              "function page(d){check('Valid page shape',Array.isArray(d.items)&&Number.isSafeInteger(d.page)&&Number.isSafeInteger(d.size)&&d.size>0&&Number.isSafeInteger(d.totalElements)&&Number.isSafeInteger(d.totalPages));}",
+              "",
+              "try{check('HTTP 200',pm.response.code===200);const envelope=pm.response.json();check('ApiResponse success/status',envelope.success===true&&envelope.status===pm.response.code&&Object.hasOwn(envelope,'data'));safe(envelope,true);const d=envelope.data;let repeat=false;",
+              "check('SUPER_ADMIN authenticated',d.role==='SUPER_ADMIN'&&positive(d.userId));check('Session issued',typeof d.accessToken==='string'&&d.accessToken.length>0&&typeof d.refreshToken==='string'&&d.refreshToken.length>0);pm.environment.set('adminAccessToken',d.accessToken);pm.environment.set('adminRefreshToken',d.refreshToken);",
+              "if(!repeat)pm.environment.set('lastStep','2');",
+              "}catch(error){pm.environment.set('runBlocked','Request 2 failed. Review assertion names, fix local prerequisites and restart at 01.');pm.execution.setNextRequest(null);pm.test('Run stopped after failure',()=>pm.expect(false,'Verification failed; do not continue manually.').to.equal(true));}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/auth/login/admin",
+        "body": {
+          "mode": "raw",
+          "raw": "{{requestBody}}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "03 - Current session",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "function block(message){pm.environment.set('runBlocked',message);pm.execution.setNextRequest(null);pm.test('Prerequisites',()=>pm.expect(false,message).to.equal(true));pm.execution.skipRequest();}",
+              "if(pm.environment.get('baseUrl')!=='http://localhost:8081')block('Use only the local backend origin http://localhost:8081.');",
+              "if(pm.environment.get('runBlocked'))block('Run is blocked. Restart the complete collection after resolving the failure.');",
+              "if(Number(pm.environment.get('lastStep'))!==3-1)block('Run all requests in order using Collection Runner, beginning at 01.');",
+              ""
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "function check(label,condition){pm.test(label,()=>pm.expect(Boolean(condition),label).to.equal(true));if(!condition)throw Error(label);}",
+              "function positive(value){return Number.isSafeInteger(value)&&value>0;}",
+              "function envId(key){return Number(pm.environment.get(key));}",
+              "function saveId(key,value){check('Valid '+key,positive(value));pm.environment.set(key,String(value));}",
+              "function safe(value,auth=false){if(typeof value==='string'){for(const key of (auth?['superAdminPassword']:['superAdminPassword','adminAccessToken','adminRefreshToken'])){const secret=pm.environment.get(key);check('No secret value echoed',!secret||value!==secret);}}if(value&&typeof value==='object')for(const [key,v] of Object.entries(value)){check('No forbidden secret field',!['password','passwordHash','otpHash','tokenHash','otp','authorization','stackTrace'].includes(key));if(!auth)check('No session secrets in operational response',!['accessToken','refreshToken'].includes(key));safe(v,auth);}}",
+              "function history(d){check('History is an array',Array.isArray(d.history));const ids=new Set();for(const h of d.history){check('History IDs unique',positive(h.id)&&!ids.has(h.id));ids.add(h.id);check('History contains real transitions',h.fromStatus==null||h.fromStatus!==h.toStatus);}return d.history;}",
+              "function ownership(d){check('Request identity and ownership',d.request.id===envId('serviceRequestId')&&d.request.customerProfileId===envId('customerProfileId')&&d.request.liftId===envId('liftId'));}",
+              "function assignment(d){check('Authoritative assignment maps selected technician',d.activeAssignment&&d.activeAssignment.id===envId('assignmentId')&&d.activeAssignment.technicianProfileId===envId('technicianProfileId')&&d.activeAssignment.serviceRequestId===envId('serviceRequestId'));}",
+              "function page(d){check('Valid page shape',Array.isArray(d.items)&&Number.isSafeInteger(d.page)&&Number.isSafeInteger(d.size)&&d.size>0&&Number.isSafeInteger(d.totalElements)&&Number.isSafeInteger(d.totalPages));}",
+              "",
+              "try{check('HTTP 200',pm.response.code===200);const envelope=pm.response.json();check('ApiResponse success/status',envelope.success===true&&envelope.status===pm.response.code&&Object.hasOwn(envelope,'data'));safe(envelope,false);const d=envelope.data;let repeat=false;",
+              "check('Administrator session identity',d.role==='SUPER_ADMIN'&&positive(d.userId));",
+              "pm.sendRequest({url:'http://localhost:8081/api/v1/me',method:'GET',header:{Accept:'application/json'}},(error,response)=>{try{check('Anonymous protected read returns 401',!error&&response.code===401);const e=response.json();check('401 ApiResponse',e.success===false&&e.status===401);safe(e);}catch(e){pm.environment.set('runBlocked','Anonymous 401 check failed; restart after fixing authorization.');pm.execution.setNextRequest(null);}});",
+              "if(!repeat)pm.environment.set('lastStep','3');",
+              "}catch(error){pm.environment.set('runBlocked','Request 3 failed. Review assertion names, fix local prerequisites and restart at 01.');pm.execution.setNextRequest(null);pm.test('Run stopped after failure',()=>pm.expect(false,'Verification failed; do not continue manually.').to.equal(true));}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{adminAccessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/me"
+      }
+    },
+    {
+      "name": "04 - List active customers and select one",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "function block(message){pm.environment.set('runBlocked',message);pm.execution.setNextRequest(null);pm.test('Prerequisites',()=>pm.expect(false,message).to.equal(true));pm.execution.skipRequest();}",
+              "if(pm.environment.get('baseUrl')!=='http://localhost:8081')block('Use only the local backend origin http://localhost:8081.');",
+              "if(pm.environment.get('runBlocked'))block('Run is blocked. Restart the complete collection after resolving the failure.');",
+              "if(Number(pm.environment.get('lastStep'))!==4-1)block('Run all requests in order using Collection Runner, beginning at 01.');",
+              "if(!pm.environment.get('directoryPage'))pm.environment.set('directoryPage','0');"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "function check(label,condition){pm.test(label,()=>pm.expect(Boolean(condition),label).to.equal(true));if(!condition)throw Error(label);}",
+              "function positive(value){return Number.isSafeInteger(value)&&value>0;}",
+              "function envId(key){return Number(pm.environment.get(key));}",
+              "function saveId(key,value){check('Valid '+key,positive(value));pm.environment.set(key,String(value));}",
+              "function safe(value,auth=false){if(typeof value==='string'){for(const key of (auth?['superAdminPassword']:['superAdminPassword','adminAccessToken','adminRefreshToken'])){const secret=pm.environment.get(key);check('No secret value echoed',!secret||value!==secret);}}if(value&&typeof value==='object')for(const [key,v] of Object.entries(value)){check('No forbidden secret field',!['password','passwordHash','otpHash','tokenHash','otp','authorization','stackTrace'].includes(key));if(!auth)check('No session secrets in operational response',!['accessToken','refreshToken'].includes(key));safe(v,auth);}}",
+              "function history(d){check('History is an array',Array.isArray(d.history));const ids=new Set();for(const h of d.history){check('History IDs unique',positive(h.id)&&!ids.has(h.id));ids.add(h.id);check('History contains real transitions',h.fromStatus==null||h.fromStatus!==h.toStatus);}return d.history;}",
+              "function ownership(d){check('Request identity and ownership',d.request.id===envId('serviceRequestId')&&d.request.customerProfileId===envId('customerProfileId')&&d.request.liftId===envId('liftId'));}",
+              "function assignment(d){check('Authoritative assignment maps selected technician',d.activeAssignment&&d.activeAssignment.id===envId('assignmentId')&&d.activeAssignment.technicianProfileId===envId('technicianProfileId')&&d.activeAssignment.serviceRequestId===envId('serviceRequestId'));}",
+              "function page(d){check('Valid page shape',Array.isArray(d.items)&&Number.isSafeInteger(d.page)&&Number.isSafeInteger(d.size)&&d.size>0&&Number.isSafeInteger(d.totalElements)&&Number.isSafeInteger(d.totalPages));}",
+              "",
+              "try{check('HTTP 200',pm.response.code===200);const envelope=pm.response.json();check('ApiResponse success/status',envelope.success===true&&envelope.status===pm.response.code&&Object.hasOwn(envelope,'data'));safe(envelope,false);const d=envelope.data;let repeat=false;",
+              "page(d);check('Expected customer page',d.page===Number(pm.environment.get('directoryPage')));let candidates=JSON.parse(pm.environment.get('customerCandidates')||'[]');for(const row of d.items){check('Customer profile ID supplied',positive(row.customerProfileId));if(row.active&&row.status==='ACTIVE')candidates.push(row.customerProfileId);}pm.environment.set('customerCandidates',JSON.stringify([...new Set(candidates)]));if(d.page+1<d.totalPages){pm.environment.set('directoryPage',String(d.page+1));pm.execution.setNextRequest(pm.info.requestName);repeat=true;}else{check('Active customer prerequisite: provision an eligible customer first',candidates.length>0);saveId('customerProfileId',candidates[0]);pm.environment.set('directoryPage','0');}",
+              "if(!repeat)pm.environment.set('lastStep','4');",
+              "}catch(error){pm.environment.set('runBlocked','Request 4 failed. Review assertion names, fix local prerequisites and restart at 01.');pm.execution.setNextRequest(null);pm.test('Run stopped after failure',()=>pm.expect(false,'Verification failed; do not continue manually.').to.equal(true));}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{adminAccessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/admin/customers?page={{directoryPage}}&size=100&active=true"
+      }
+    },
+    {
+      "name": "05 - List active technicians and select one",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "function block(message){pm.environment.set('runBlocked',message);pm.execution.setNextRequest(null);pm.test('Prerequisites',()=>pm.expect(false,message).to.equal(true));pm.execution.skipRequest();}",
+              "if(pm.environment.get('baseUrl')!=='http://localhost:8081')block('Use only the local backend origin http://localhost:8081.');",
+              "if(pm.environment.get('runBlocked'))block('Run is blocked. Restart the complete collection after resolving the failure.');",
+              "if(Number(pm.environment.get('lastStep'))!==5-1)block('Run all requests in order using Collection Runner, beginning at 01.');",
+              ""
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "function check(label,condition){pm.test(label,()=>pm.expect(Boolean(condition),label).to.equal(true));if(!condition)throw Error(label);}",
+              "function positive(value){return Number.isSafeInteger(value)&&value>0;}",
+              "function envId(key){return Number(pm.environment.get(key));}",
+              "function saveId(key,value){check('Valid '+key,positive(value));pm.environment.set(key,String(value));}",
+              "function safe(value,auth=false){if(typeof value==='string'){for(const key of (auth?['superAdminPassword']:['superAdminPassword','adminAccessToken','adminRefreshToken'])){const secret=pm.environment.get(key);check('No secret value echoed',!secret||value!==secret);}}if(value&&typeof value==='object')for(const [key,v] of Object.entries(value)){check('No forbidden secret field',!['password','passwordHash','otpHash','tokenHash','otp','authorization','stackTrace'].includes(key));if(!auth)check('No session secrets in operational response',!['accessToken','refreshToken'].includes(key));safe(v,auth);}}",
+              "function history(d){check('History is an array',Array.isArray(d.history));const ids=new Set();for(const h of d.history){check('History IDs unique',positive(h.id)&&!ids.has(h.id));ids.add(h.id);check('History contains real transitions',h.fromStatus==null||h.fromStatus!==h.toStatus);}return d.history;}",
+              "function ownership(d){check('Request identity and ownership',d.request.id===envId('serviceRequestId')&&d.request.customerProfileId===envId('customerProfileId')&&d.request.liftId===envId('liftId'));}",
+              "function assignment(d){check('Authoritative assignment maps selected technician',d.activeAssignment&&d.activeAssignment.id===envId('assignmentId')&&d.activeAssignment.technicianProfileId===envId('technicianProfileId')&&d.activeAssignment.serviceRequestId===envId('serviceRequestId'));}",
+              "function page(d){check('Valid page shape',Array.isArray(d.items)&&Number.isSafeInteger(d.page)&&Number.isSafeInteger(d.size)&&d.size>0&&Number.isSafeInteger(d.totalElements)&&Number.isSafeInteger(d.totalPages));}",
+              "",
+              "try{check('HTTP 200',pm.response.code===200);const envelope=pm.response.json();check('ApiResponse success/status',envelope.success===true&&envelope.status===pm.response.code&&Object.hasOwn(envelope,'data'));safe(envelope,false);const d=envelope.data;let repeat=false;",
+              "page(d);const row=d.items.find(r=>r.active&&positive(r.technicianProfileId));if(row){saveId('technicianProfileId',row.technicianProfileId);}else if(d.page+1<d.totalPages){pm.environment.set('directoryPage',String(d.page+1));pm.execution.setNextRequest(pm.info.requestName);repeat=true;}else check('Active technician prerequisite: provision an eligible technician first',false);",
+              "if(!repeat)pm.environment.set('lastStep','5');",
+              "}catch(error){pm.environment.set('runBlocked','Request 5 failed. Review assertion names, fix local prerequisites and restart at 01.');pm.execution.setNextRequest(null);pm.test('Run stopped after failure',()=>pm.expect(false,'Verification failed; do not continue manually.').to.equal(true));}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{adminAccessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/admin/technicians?page={{directoryPage}}&size=100&active=true"
+      }
+    },
+    {
+      "name": "06 - List buildings and choose customer building",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "function block(message){pm.environment.set('runBlocked',message);pm.execution.setNextRequest(null);pm.test('Prerequisites',()=>pm.expect(false,message).to.equal(true));pm.execution.skipRequest();}",
+              "if(pm.environment.get('baseUrl')!=='http://localhost:8081')block('Use only the local backend origin http://localhost:8081.');",
+              "if(pm.environment.get('runBlocked'))block('Run is blocked. Restart the complete collection after resolving the failure.');",
+              "if(Number(pm.environment.get('lastStep'))!==6-1)block('Run all requests in order using Collection Runner, beginning at 01.');",
+              ""
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "function check(label,condition){pm.test(label,()=>pm.expect(Boolean(condition),label).to.equal(true));if(!condition)throw Error(label);}",
+              "function positive(value){return Number.isSafeInteger(value)&&value>0;}",
+              "function envId(key){return Number(pm.environment.get(key));}",
+              "function saveId(key,value){check('Valid '+key,positive(value));pm.environment.set(key,String(value));}",
+              "function safe(value,auth=false){if(typeof value==='string'){for(const key of (auth?['superAdminPassword']:['superAdminPassword','adminAccessToken','adminRefreshToken'])){const secret=pm.environment.get(key);check('No secret value echoed',!secret||value!==secret);}}if(value&&typeof value==='object')for(const [key,v] of Object.entries(value)){check('No forbidden secret field',!['password','passwordHash','otpHash','tokenHash','otp','authorization','stackTrace'].includes(key));if(!auth)check('No session secrets in operational response',!['accessToken','refreshToken'].includes(key));safe(v,auth);}}",
+              "function history(d){check('History is an array',Array.isArray(d.history));const ids=new Set();for(const h of d.history){check('History IDs unique',positive(h.id)&&!ids.has(h.id));ids.add(h.id);check('History contains real transitions',h.fromStatus==null||h.fromStatus!==h.toStatus);}return d.history;}",
+              "function ownership(d){check('Request identity and ownership',d.request.id===envId('serviceRequestId')&&d.request.customerProfileId===envId('customerProfileId')&&d.request.liftId===envId('liftId'));}",
+              "function assignment(d){check('Authoritative assignment maps selected technician',d.activeAssignment&&d.activeAssignment.id===envId('assignmentId')&&d.activeAssignment.technicianProfileId===envId('technicianProfileId')&&d.activeAssignment.serviceRequestId===envId('serviceRequestId'));}",
+              "function page(d){check('Valid page shape',Array.isArray(d.items)&&Number.isSafeInteger(d.page)&&Number.isSafeInteger(d.size)&&d.size>0&&Number.isSafeInteger(d.totalElements)&&Number.isSafeInteger(d.totalPages));}",
+              "",
+              "try{check('HTTP 200',pm.response.code===200);const envelope=pm.response.json();check('ApiResponse success/status',envelope.success===true&&envelope.status===pm.response.code&&Object.hasOwn(envelope,'data'));safe(envelope,false);const d=envelope.data;let repeat=false;",
+              "check('Building list',Array.isArray(d));const customers=JSON.parse(pm.environment.get('customerCandidates'));const candidates=d.filter(b=>b.isActive&&positive(b.id)&&customers.includes(b.customerProfileId)).map(b=>({id:b.id,customerProfileId:b.customerProfileId}));check('Asset prerequisite: provide an active building for an active customer',candidates.length>0);pm.environment.set('buildingCandidates',JSON.stringify(candidates));saveId('buildingId',candidates[0].id);saveId('customerProfileId',candidates[0].customerProfileId);",
+              "if(!repeat)pm.environment.set('lastStep','6');",
+              "}catch(error){pm.environment.set('runBlocked','Request 6 failed. Review assertion names, fix local prerequisites and restart at 01.');pm.execution.setNextRequest(null);pm.test('Run stopped after failure',()=>pm.expect(false,'Verification failed; do not continue manually.').to.equal(true));}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{adminAccessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/buildings"
+      }
+    },
+    {
+      "name": "07 - List lifts and select complete relationship",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "function block(message){pm.environment.set('runBlocked',message);pm.execution.setNextRequest(null);pm.test('Prerequisites',()=>pm.expect(false,message).to.equal(true));pm.execution.skipRequest();}",
+              "if(pm.environment.get('baseUrl')!=='http://localhost:8081')block('Use only the local backend origin http://localhost:8081.');",
+              "if(pm.environment.get('runBlocked'))block('Run is blocked. Restart the complete collection after resolving the failure.');",
+              "if(Number(pm.environment.get('lastStep'))!==7-1)block('Run all requests in order using Collection Runner, beginning at 01.');",
+              ""
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "function check(label,condition){pm.test(label,()=>pm.expect(Boolean(condition),label).to.equal(true));if(!condition)throw Error(label);}",
+              "function positive(value){return Number.isSafeInteger(value)&&value>0;}",
+              "function envId(key){return Number(pm.environment.get(key));}",
+              "function saveId(key,value){check('Valid '+key,positive(value));pm.environment.set(key,String(value));}",
+              "function safe(value,auth=false){if(typeof value==='string'){for(const key of (auth?['superAdminPassword']:['superAdminPassword','adminAccessToken','adminRefreshToken'])){const secret=pm.environment.get(key);check('No secret value echoed',!secret||value!==secret);}}if(value&&typeof value==='object')for(const [key,v] of Object.entries(value)){check('No forbidden secret field',!['password','passwordHash','otpHash','tokenHash','otp','authorization','stackTrace'].includes(key));if(!auth)check('No session secrets in operational response',!['accessToken','refreshToken'].includes(key));safe(v,auth);}}",
+              "function history(d){check('History is an array',Array.isArray(d.history));const ids=new Set();for(const h of d.history){check('History IDs unique',positive(h.id)&&!ids.has(h.id));ids.add(h.id);check('History contains real transitions',h.fromStatus==null||h.fromStatus!==h.toStatus);}return d.history;}",
+              "function ownership(d){check('Request identity and ownership',d.request.id===envId('serviceRequestId')&&d.request.customerProfileId===envId('customerProfileId')&&d.request.liftId===envId('liftId'));}",
+              "function assignment(d){check('Authoritative assignment maps selected technician',d.activeAssignment&&d.activeAssignment.id===envId('assignmentId')&&d.activeAssignment.technicianProfileId===envId('technicianProfileId')&&d.activeAssignment.serviceRequestId===envId('serviceRequestId'));}",
+              "function page(d){check('Valid page shape',Array.isArray(d.items)&&Number.isSafeInteger(d.page)&&Number.isSafeInteger(d.size)&&d.size>0&&Number.isSafeInteger(d.totalElements)&&Number.isSafeInteger(d.totalPages));}",
+              "",
+              "try{check('HTTP 200',pm.response.code===200);const envelope=pm.response.json();check('ApiResponse success/status',envelope.success===true&&envelope.status===pm.response.code&&Object.hasOwn(envelope,'data'));safe(envelope,false);const d=envelope.data;let repeat=false;",
+              "check('Lift list',Array.isArray(d));const buildings=JSON.parse(pm.environment.get('buildingCandidates'));const lift=d.find(l=>l.isActive&&positive(l.id)&&buildings.some(b=>b.id===l.buildingId));check('Asset prerequisite: provide an active lift under an eligible customer building',Boolean(lift));const building=buildings.find(b=>b.id===lift.buildingId);saveId('customerProfileId',building.customerProfileId);saveId('buildingId',building.id);saveId('liftId',lift.id);check('Customer building lift chain derived from live data',JSON.parse(pm.environment.get('customerCandidates')).includes(building.customerProfileId)&&lift.buildingId===building.id);",
+              "if(!repeat)pm.environment.set('lastStep','7');",
+              "}catch(error){pm.environment.set('runBlocked','Request 7 failed. Review assertion names, fix local prerequisites and restart at 01.');pm.execution.setNextRequest(null);pm.test('Run stopped after failure',()=>pm.expect(false,'Verification failed; do not continue manually.').to.equal(true));}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{adminAccessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/lifts"
+      }
+    },
+    {
+      "name": "08 - Create retained service request",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "function block(message){pm.environment.set('runBlocked',message);pm.execution.setNextRequest(null);pm.test('Prerequisites',()=>pm.expect(false,message).to.equal(true));pm.execution.skipRequest();}",
+              "if(pm.environment.get('baseUrl')!=='http://localhost:8081')block('Use only the local backend origin http://localhost:8081.');",
+              "if(pm.environment.get('runBlocked'))block('Run is blocked. Restart the complete collection after resolving the failure.');",
+              "if(Number(pm.environment.get('lastStep'))!==8-1)block('Run all requests in order using Collection Runner, beginning at 01.');",
+              "for(const key of ['customerProfileId','liftId'])if(!Number.isSafeInteger(Number(pm.environment.get(key)))||Number(pm.environment.get(key))<=0)block('Missing selected relationship; restart collection.');pm.variables.set('requestBody',JSON.stringify({customerProfileId:Number(pm.environment.get('customerProfileId')),liftId:Number(pm.environment.get('liftId')),title:pm.environment.get('runId'),description:'Local-development API verification '+pm.environment.get('runId'),serviceType:'BREAKDOWN',priority:'MEDIUM'}));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "function check(label,condition){pm.test(label,()=>pm.expect(Boolean(condition),label).to.equal(true));if(!condition)throw Error(label);}",
+              "function positive(value){return Number.isSafeInteger(value)&&value>0;}",
+              "function envId(key){return Number(pm.environment.get(key));}",
+              "function saveId(key,value){check('Valid '+key,positive(value));pm.environment.set(key,String(value));}",
+              "function safe(value,auth=false){if(typeof value==='string'){for(const key of (auth?['superAdminPassword']:['superAdminPassword','adminAccessToken','adminRefreshToken'])){const secret=pm.environment.get(key);check('No secret value echoed',!secret||value!==secret);}}if(value&&typeof value==='object')for(const [key,v] of Object.entries(value)){check('No forbidden secret field',!['password','passwordHash','otpHash','tokenHash','otp','authorization','stackTrace'].includes(key));if(!auth)check('No session secrets in operational response',!['accessToken','refreshToken'].includes(key));safe(v,auth);}}",
+              "function history(d){check('History is an array',Array.isArray(d.history));const ids=new Set();for(const h of d.history){check('History IDs unique',positive(h.id)&&!ids.has(h.id));ids.add(h.id);check('History contains real transitions',h.fromStatus==null||h.fromStatus!==h.toStatus);}return d.history;}",
+              "function ownership(d){check('Request identity and ownership',d.request.id===envId('serviceRequestId')&&d.request.customerProfileId===envId('customerProfileId')&&d.request.liftId===envId('liftId'));}",
+              "function assignment(d){check('Authoritative assignment maps selected technician',d.activeAssignment&&d.activeAssignment.id===envId('assignmentId')&&d.activeAssignment.technicianProfileId===envId('technicianProfileId')&&d.activeAssignment.serviceRequestId===envId('serviceRequestId'));}",
+              "function page(d){check('Valid page shape',Array.isArray(d.items)&&Number.isSafeInteger(d.page)&&Number.isSafeInteger(d.size)&&d.size>0&&Number.isSafeInteger(d.totalElements)&&Number.isSafeInteger(d.totalPages));}",
+              "",
+              "try{check('HTTP 200',pm.response.code===200);const envelope=pm.response.json();check('ApiResponse success/status',envelope.success===true&&envelope.status===pm.response.code&&Object.hasOwn(envelope,'data'));safe(envelope,false);const d=envelope.data;let repeat=false;",
+              "const submitted=JSON.parse(pm.variables.get('requestBody'));check('Exact admin create fields',Object.keys(submitted).sort().join(',')==='customerProfileId,description,liftId,priority,serviceType,title');check('Selected profile and lift submitted',submitted.customerProfileId===envId('customerProfileId')&&submitted.liftId===envId('liftId'));saveId('serviceRequestId',d.request.id);ownership(d);check('Initial PENDING response',d.request.status==='PENDING'&&d.request.title===pm.environment.get('runId')&&d.activeAssignment===null&&d.report===null);check('One initial event',history(d).length===1&&d.history[0].fromStatus===null&&d.history[0].toStatus==='PENDING');pm.environment.set('initialHistory',JSON.stringify(d.history));",
+              "if(!repeat)pm.environment.set('lastStep','8');",
+              "}catch(error){pm.environment.set('runBlocked','Request 8 failed. Review assertion names, fix local prerequisites and restart at 01.');pm.execution.setNextRequest(null);pm.test('Run stopped after failure',()=>pm.expect(false,'Verification failed; do not continue manually.').to.equal(true));}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{adminAccessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/service-requests",
+        "body": {
+          "mode": "raw",
+          "raw": "{{requestBody}}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "09 - List requests and find retained request",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "function block(message){pm.environment.set('runBlocked',message);pm.execution.setNextRequest(null);pm.test('Prerequisites',()=>pm.expect(false,message).to.equal(true));pm.execution.skipRequest();}",
+              "if(pm.environment.get('baseUrl')!=='http://localhost:8081')block('Use only the local backend origin http://localhost:8081.');",
+              "if(pm.environment.get('runBlocked'))block('Run is blocked. Restart the complete collection after resolving the failure.');",
+              "if(Number(pm.environment.get('lastStep'))!==9-1)block('Run all requests in order using Collection Runner, beginning at 01.');",
+              "if(!pm.environment.get('listPage'))pm.environment.set('listPage','0');"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "function check(label,condition){pm.test(label,()=>pm.expect(Boolean(condition),label).to.equal(true));if(!condition)throw Error(label);}",
+              "function positive(value){return Number.isSafeInteger(value)&&value>0;}",
+              "function envId(key){return Number(pm.environment.get(key));}",
+              "function saveId(key,value){check('Valid '+key,positive(value));pm.environment.set(key,String(value));}",
+              "function safe(value,auth=false){if(typeof value==='string'){for(const key of (auth?['superAdminPassword']:['superAdminPassword','adminAccessToken','adminRefreshToken'])){const secret=pm.environment.get(key);check('No secret value echoed',!secret||value!==secret);}}if(value&&typeof value==='object')for(const [key,v] of Object.entries(value)){check('No forbidden secret field',!['password','passwordHash','otpHash','tokenHash','otp','authorization','stackTrace'].includes(key));if(!auth)check('No session secrets in operational response',!['accessToken','refreshToken'].includes(key));safe(v,auth);}}",
+              "function history(d){check('History is an array',Array.isArray(d.history));const ids=new Set();for(const h of d.history){check('History IDs unique',positive(h.id)&&!ids.has(h.id));ids.add(h.id);check('History contains real transitions',h.fromStatus==null||h.fromStatus!==h.toStatus);}return d.history;}",
+              "function ownership(d){check('Request identity and ownership',d.request.id===envId('serviceRequestId')&&d.request.customerProfileId===envId('customerProfileId')&&d.request.liftId===envId('liftId'));}",
+              "function assignment(d){check('Authoritative assignment maps selected technician',d.activeAssignment&&d.activeAssignment.id===envId('assignmentId')&&d.activeAssignment.technicianProfileId===envId('technicianProfileId')&&d.activeAssignment.serviceRequestId===envId('serviceRequestId'));}",
+              "function page(d){check('Valid page shape',Array.isArray(d.items)&&Number.isSafeInteger(d.page)&&Number.isSafeInteger(d.size)&&d.size>0&&Number.isSafeInteger(d.totalElements)&&Number.isSafeInteger(d.totalPages));}",
+              "",
+              "try{check('HTTP 200',pm.response.code===200);const envelope=pm.response.json();check('ApiResponse success/status',envelope.success===true&&envelope.status===pm.response.code&&Object.hasOwn(envelope,'data'));safe(envelope,false);const d=envelope.data;let repeat=false;",
+              "page(d);const row=d.items.find(r=>r.id===envId('serviceRequestId'));if(row){check('List mapping',row.customerProfileId===envId('customerProfileId')&&row.liftId===envId('liftId')&&row.status==='PENDING'&&row.priority==='MEDIUM');}else if(d.page+1<d.totalPages){pm.environment.set('listPage',String(d.page+1));pm.execution.setNextRequest(pm.info.requestName);repeat=true;}else check('Created request is present in filtered list',false);",
+              "if(!repeat)pm.environment.set('lastStep','9');",
+              "}catch(error){pm.environment.set('runBlocked','Request 9 failed. Review assertion names, fix local prerequisites and restart at 01.');pm.execution.setNextRequest(null);pm.test('Run stopped after failure',()=>pm.expect(false,'Verification failed; do not continue manually.').to.equal(true));}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{adminAccessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/service-requests?page={{listPage}}&size=100&status=PENDING&priority=MEDIUM"
+      }
+    },
+    {
+      "name": "10 - Confirm initial detail",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "function block(message){pm.environment.set('runBlocked',message);pm.execution.setNextRequest(null);pm.test('Prerequisites',()=>pm.expect(false,message).to.equal(true));pm.execution.skipRequest();}",
+              "if(pm.environment.get('baseUrl')!=='http://localhost:8081')block('Use only the local backend origin http://localhost:8081.');",
+              "if(pm.environment.get('runBlocked'))block('Run is blocked. Restart the complete collection after resolving the failure.');",
+              "if(Number(pm.environment.get('lastStep'))!==10-1)block('Run all requests in order using Collection Runner, beginning at 01.');",
+              ""
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "function check(label,condition){pm.test(label,()=>pm.expect(Boolean(condition),label).to.equal(true));if(!condition)throw Error(label);}",
+              "function positive(value){return Number.isSafeInteger(value)&&value>0;}",
+              "function envId(key){return Number(pm.environment.get(key));}",
+              "function saveId(key,value){check('Valid '+key,positive(value));pm.environment.set(key,String(value));}",
+              "function safe(value,auth=false){if(typeof value==='string'){for(const key of (auth?['superAdminPassword']:['superAdminPassword','adminAccessToken','adminRefreshToken'])){const secret=pm.environment.get(key);check('No secret value echoed',!secret||value!==secret);}}if(value&&typeof value==='object')for(const [key,v] of Object.entries(value)){check('No forbidden secret field',!['password','passwordHash','otpHash','tokenHash','otp','authorization','stackTrace'].includes(key));if(!auth)check('No session secrets in operational response',!['accessToken','refreshToken'].includes(key));safe(v,auth);}}",
+              "function history(d){check('History is an array',Array.isArray(d.history));const ids=new Set();for(const h of d.history){check('History IDs unique',positive(h.id)&&!ids.has(h.id));ids.add(h.id);check('History contains real transitions',h.fromStatus==null||h.fromStatus!==h.toStatus);}return d.history;}",
+              "function ownership(d){check('Request identity and ownership',d.request.id===envId('serviceRequestId')&&d.request.customerProfileId===envId('customerProfileId')&&d.request.liftId===envId('liftId'));}",
+              "function assignment(d){check('Authoritative assignment maps selected technician',d.activeAssignment&&d.activeAssignment.id===envId('assignmentId')&&d.activeAssignment.technicianProfileId===envId('technicianProfileId')&&d.activeAssignment.serviceRequestId===envId('serviceRequestId'));}",
+              "function page(d){check('Valid page shape',Array.isArray(d.items)&&Number.isSafeInteger(d.page)&&Number.isSafeInteger(d.size)&&d.size>0&&Number.isSafeInteger(d.totalElements)&&Number.isSafeInteger(d.totalPages));}",
+              "",
+              "try{check('HTTP 200',pm.response.code===200);const envelope=pm.response.json();check('ApiResponse success/status',envelope.success===true&&envelope.status===pm.response.code&&Object.hasOwn(envelope,'data'));safe(envelope,false);const d=envelope.data;let repeat=false;",
+              "ownership(d);check('Initial detail unchanged',d.request.status==='PENDING'&&d.activeAssignment===null&&d.report===null);check('Initial history preserved',JSON.stringify(history(d))===pm.environment.get('initialHistory'));",
+              "if(!repeat)pm.environment.set('lastStep','10');",
+              "}catch(error){pm.environment.set('runBlocked','Request 10 failed. Review assertion names, fix local prerequisites and restart at 01.');pm.execution.setNextRequest(null);pm.test('Run stopped after failure',()=>pm.expect(false,'Verification failed; do not continue manually.').to.equal(true));}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{adminAccessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/service-requests/{{serviceRequestId}}"
+      }
+    },
+    {
+      "name": "11 - Assign selected technician",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "function block(message){pm.environment.set('runBlocked',message);pm.execution.setNextRequest(null);pm.test('Prerequisites',()=>pm.expect(false,message).to.equal(true));pm.execution.skipRequest();}",
+              "if(pm.environment.get('baseUrl')!=='http://localhost:8081')block('Use only the local backend origin http://localhost:8081.');",
+              "if(pm.environment.get('runBlocked'))block('Run is blocked. Restart the complete collection after resolving the failure.');",
+              "if(Number(pm.environment.get('lastStep'))!==11-1)block('Run all requests in order using Collection Runner, beginning at 01.');",
+              "pm.variables.set('requestBody',JSON.stringify({technicianProfileId:Number(pm.environment.get('technicianProfileId')),notes:'Local assignment '+pm.environment.get('runId')}));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "function check(label,condition){pm.test(label,()=>pm.expect(Boolean(condition),label).to.equal(true));if(!condition)throw Error(label);}",
+              "function positive(value){return Number.isSafeInteger(value)&&value>0;}",
+              "function envId(key){return Number(pm.environment.get(key));}",
+              "function saveId(key,value){check('Valid '+key,positive(value));pm.environment.set(key,String(value));}",
+              "function safe(value,auth=false){if(typeof value==='string'){for(const key of (auth?['superAdminPassword']:['superAdminPassword','adminAccessToken','adminRefreshToken'])){const secret=pm.environment.get(key);check('No secret value echoed',!secret||value!==secret);}}if(value&&typeof value==='object')for(const [key,v] of Object.entries(value)){check('No forbidden secret field',!['password','passwordHash','otpHash','tokenHash','otp','authorization','stackTrace'].includes(key));if(!auth)check('No session secrets in operational response',!['accessToken','refreshToken'].includes(key));safe(v,auth);}}",
+              "function history(d){check('History is an array',Array.isArray(d.history));const ids=new Set();for(const h of d.history){check('History IDs unique',positive(h.id)&&!ids.has(h.id));ids.add(h.id);check('History contains real transitions',h.fromStatus==null||h.fromStatus!==h.toStatus);}return d.history;}",
+              "function ownership(d){check('Request identity and ownership',d.request.id===envId('serviceRequestId')&&d.request.customerProfileId===envId('customerProfileId')&&d.request.liftId===envId('liftId'));}",
+              "function assignment(d){check('Authoritative assignment maps selected technician',d.activeAssignment&&d.activeAssignment.id===envId('assignmentId')&&d.activeAssignment.technicianProfileId===envId('technicianProfileId')&&d.activeAssignment.serviceRequestId===envId('serviceRequestId'));}",
+              "function page(d){check('Valid page shape',Array.isArray(d.items)&&Number.isSafeInteger(d.page)&&Number.isSafeInteger(d.size)&&d.size>0&&Number.isSafeInteger(d.totalElements)&&Number.isSafeInteger(d.totalPages));}",
+              "",
+              "try{check('HTTP 200',pm.response.code===200);const envelope=pm.response.json();check('ApiResponse success/status',envelope.success===true&&envelope.status===pm.response.code&&Object.hasOwn(envelope,'data'));safe(envelope,false);const d=envelope.data;let repeat=false;",
+              "ownership(d);saveId('assignmentId',d.activeAssignment.id);assignment(d);check('Assignment status is authoritative',d.request.status==='ASSIGNED'&&d.activeAssignment.status==='ASSIGNED');const h=history(d),before=JSON.parse(pm.environment.get('initialHistory'));check('Assignment adds exactly one transition',h.length===before.length+1&&h.filter(x=>x.fromStatus==='PENDING'&&x.toStatus==='ASSIGNED').length===1);check('Initial event retained',before.every(x=>h.some(y=>JSON.stringify(x)===JSON.stringify(y))));pm.environment.set('assignedHistory',JSON.stringify(h));",
+              "if(!repeat)pm.environment.set('lastStep','11');",
+              "}catch(error){pm.environment.set('runBlocked','Request 11 failed. Review assertion names, fix local prerequisites and restart at 01.');pm.execution.setNextRequest(null);pm.test('Run stopped after failure',()=>pm.expect(false,'Verification failed; do not continue manually.').to.equal(true));}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{adminAccessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/service-requests/{{serviceRequestId}}/assignments",
+        "body": {
+          "mode": "raw",
+          "raw": "{{requestBody}}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "12 - Confirm authoritative active assignment",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "function block(message){pm.environment.set('runBlocked',message);pm.execution.setNextRequest(null);pm.test('Prerequisites',()=>pm.expect(false,message).to.equal(true));pm.execution.skipRequest();}",
+              "if(pm.environment.get('baseUrl')!=='http://localhost:8081')block('Use only the local backend origin http://localhost:8081.');",
+              "if(pm.environment.get('runBlocked'))block('Run is blocked. Restart the complete collection after resolving the failure.');",
+              "if(Number(pm.environment.get('lastStep'))!==12-1)block('Run all requests in order using Collection Runner, beginning at 01.');",
+              ""
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "function check(label,condition){pm.test(label,()=>pm.expect(Boolean(condition),label).to.equal(true));if(!condition)throw Error(label);}",
+              "function positive(value){return Number.isSafeInteger(value)&&value>0;}",
+              "function envId(key){return Number(pm.environment.get(key));}",
+              "function saveId(key,value){check('Valid '+key,positive(value));pm.environment.set(key,String(value));}",
+              "function safe(value,auth=false){if(typeof value==='string'){for(const key of (auth?['superAdminPassword']:['superAdminPassword','adminAccessToken','adminRefreshToken'])){const secret=pm.environment.get(key);check('No secret value echoed',!secret||value!==secret);}}if(value&&typeof value==='object')for(const [key,v] of Object.entries(value)){check('No forbidden secret field',!['password','passwordHash','otpHash','tokenHash','otp','authorization','stackTrace'].includes(key));if(!auth)check('No session secrets in operational response',!['accessToken','refreshToken'].includes(key));safe(v,auth);}}",
+              "function history(d){check('History is an array',Array.isArray(d.history));const ids=new Set();for(const h of d.history){check('History IDs unique',positive(h.id)&&!ids.has(h.id));ids.add(h.id);check('History contains real transitions',h.fromStatus==null||h.fromStatus!==h.toStatus);}return d.history;}",
+              "function ownership(d){check('Request identity and ownership',d.request.id===envId('serviceRequestId')&&d.request.customerProfileId===envId('customerProfileId')&&d.request.liftId===envId('liftId'));}",
+              "function assignment(d){check('Authoritative assignment maps selected technician',d.activeAssignment&&d.activeAssignment.id===envId('assignmentId')&&d.activeAssignment.technicianProfileId===envId('technicianProfileId')&&d.activeAssignment.serviceRequestId===envId('serviceRequestId'));}",
+              "function page(d){check('Valid page shape',Array.isArray(d.items)&&Number.isSafeInteger(d.page)&&Number.isSafeInteger(d.size)&&d.size>0&&Number.isSafeInteger(d.totalElements)&&Number.isSafeInteger(d.totalPages));}",
+              "",
+              "try{check('HTTP 200',pm.response.code===200);const envelope=pm.response.json();check('ApiResponse success/status',envelope.success===true&&envelope.status===pm.response.code&&Object.hasOwn(envelope,'data'));safe(envelope,false);const d=envelope.data;let repeat=false;",
+              "ownership(d);assignment(d);check('Exactly one current assignment object',d.activeAssignment&&!Array.isArray(d.activeAssignment)&&d.activeAssignment.status==='ASSIGNED');check('Assigned history unchanged',JSON.stringify(history(d))===pm.environment.get('assignedHistory'));",
+              "if(!repeat)pm.environment.set('lastStep','12');",
+              "}catch(error){pm.environment.set('runBlocked','Request 12 failed. Review assertion names, fix local prerequisites and restart at 01.');pm.execution.setNextRequest(null);pm.test('Run stopped after failure',()=>pm.expect(false,'Verification failed; do not continue manually.').to.equal(true));}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{adminAccessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/service-requests/{{serviceRequestId}}"
+      }
+    },
+    {
+      "name": "13 - Admin authorized ACCEPTED status",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "function block(message){pm.environment.set('runBlocked',message);pm.execution.setNextRequest(null);pm.test('Prerequisites',()=>pm.expect(false,message).to.equal(true));pm.execution.skipRequest();}",
+              "if(pm.environment.get('baseUrl')!=='http://localhost:8081')block('Use only the local backend origin http://localhost:8081.');",
+              "if(pm.environment.get('runBlocked'))block('Run is blocked. Restart the complete collection after resolving the failure.');",
+              "if(Number(pm.environment.get('lastStep'))!==13-1)block('Run all requests in order using Collection Runner, beginning at 01.');",
+              "pm.variables.set('requestBody',JSON.stringify({toStatus:'ACCEPTED',notes:'Local admin transition '+pm.environment.get('runId')}));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "function check(label,condition){pm.test(label,()=>pm.expect(Boolean(condition),label).to.equal(true));if(!condition)throw Error(label);}",
+              "function positive(value){return Number.isSafeInteger(value)&&value>0;}",
+              "function envId(key){return Number(pm.environment.get(key));}",
+              "function saveId(key,value){check('Valid '+key,positive(value));pm.environment.set(key,String(value));}",
+              "function safe(value,auth=false){if(typeof value==='string'){for(const key of (auth?['superAdminPassword']:['superAdminPassword','adminAccessToken','adminRefreshToken'])){const secret=pm.environment.get(key);check('No secret value echoed',!secret||value!==secret);}}if(value&&typeof value==='object')for(const [key,v] of Object.entries(value)){check('No forbidden secret field',!['password','passwordHash','otpHash','tokenHash','otp','authorization','stackTrace'].includes(key));if(!auth)check('No session secrets in operational response',!['accessToken','refreshToken'].includes(key));safe(v,auth);}}",
+              "function history(d){check('History is an array',Array.isArray(d.history));const ids=new Set();for(const h of d.history){check('History IDs unique',positive(h.id)&&!ids.has(h.id));ids.add(h.id);check('History contains real transitions',h.fromStatus==null||h.fromStatus!==h.toStatus);}return d.history;}",
+              "function ownership(d){check('Request identity and ownership',d.request.id===envId('serviceRequestId')&&d.request.customerProfileId===envId('customerProfileId')&&d.request.liftId===envId('liftId'));}",
+              "function assignment(d){check('Authoritative assignment maps selected technician',d.activeAssignment&&d.activeAssignment.id===envId('assignmentId')&&d.activeAssignment.technicianProfileId===envId('technicianProfileId')&&d.activeAssignment.serviceRequestId===envId('serviceRequestId'));}",
+              "function page(d){check('Valid page shape',Array.isArray(d.items)&&Number.isSafeInteger(d.page)&&Number.isSafeInteger(d.size)&&d.size>0&&Number.isSafeInteger(d.totalElements)&&Number.isSafeInteger(d.totalPages));}",
+              "",
+              "try{check('HTTP 200',pm.response.code===200);const envelope=pm.response.json();check('ApiResponse success/status',envelope.success===true&&envelope.status===pm.response.code&&Object.hasOwn(envelope,'data'));safe(envelope,false);const d=envelope.data;let repeat=false;",
+              "ownership(d);assignment(d);check('Backend accepted state',d.request.status==='ACCEPTED'&&d.activeAssignment.status==='ACCEPTED');const h=history(d),before=JSON.parse(pm.environment.get('assignedHistory'));check('Status adds exactly one event',h.length===before.length+1);check('Earlier history immutable',before.every(x=>h.some(y=>JSON.stringify(x)===JSON.stringify(y))));check('Acceptance event and notes',h.filter(x=>x.fromStatus==='ASSIGNED'&&x.toStatus==='ACCEPTED'&&x.notes==='Local admin transition '+pm.environment.get('runId')).length===1);pm.environment.set('updatedHistory',JSON.stringify(h));",
+              "if(!repeat)pm.environment.set('lastStep','13');",
+              "}catch(error){pm.environment.set('runBlocked','Request 13 failed. Review assertion names, fix local prerequisites and restart at 01.');pm.execution.setNextRequest(null);pm.test('Run stopped after failure',()=>pm.expect(false,'Verification failed; do not continue manually.').to.equal(true));}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{adminAccessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/service-requests/{{serviceRequestId}}/status",
+        "body": {
+          "mode": "raw",
+          "raw": "{{requestBody}}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "14 - Confirm changed status and history",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "function block(message){pm.environment.set('runBlocked',message);pm.execution.setNextRequest(null);pm.test('Prerequisites',()=>pm.expect(false,message).to.equal(true));pm.execution.skipRequest();}",
+              "if(pm.environment.get('baseUrl')!=='http://localhost:8081')block('Use only the local backend origin http://localhost:8081.');",
+              "if(pm.environment.get('runBlocked'))block('Run is blocked. Restart the complete collection after resolving the failure.');",
+              "if(Number(pm.environment.get('lastStep'))!==14-1)block('Run all requests in order using Collection Runner, beginning at 01.');",
+              ""
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "function check(label,condition){pm.test(label,()=>pm.expect(Boolean(condition),label).to.equal(true));if(!condition)throw Error(label);}",
+              "function positive(value){return Number.isSafeInteger(value)&&value>0;}",
+              "function envId(key){return Number(pm.environment.get(key));}",
+              "function saveId(key,value){check('Valid '+key,positive(value));pm.environment.set(key,String(value));}",
+              "function safe(value,auth=false){if(typeof value==='string'){for(const key of (auth?['superAdminPassword']:['superAdminPassword','adminAccessToken','adminRefreshToken'])){const secret=pm.environment.get(key);check('No secret value echoed',!secret||value!==secret);}}if(value&&typeof value==='object')for(const [key,v] of Object.entries(value)){check('No forbidden secret field',!['password','passwordHash','otpHash','tokenHash','otp','authorization','stackTrace'].includes(key));if(!auth)check('No session secrets in operational response',!['accessToken','refreshToken'].includes(key));safe(v,auth);}}",
+              "function history(d){check('History is an array',Array.isArray(d.history));const ids=new Set();for(const h of d.history){check('History IDs unique',positive(h.id)&&!ids.has(h.id));ids.add(h.id);check('History contains real transitions',h.fromStatus==null||h.fromStatus!==h.toStatus);}return d.history;}",
+              "function ownership(d){check('Request identity and ownership',d.request.id===envId('serviceRequestId')&&d.request.customerProfileId===envId('customerProfileId')&&d.request.liftId===envId('liftId'));}",
+              "function assignment(d){check('Authoritative assignment maps selected technician',d.activeAssignment&&d.activeAssignment.id===envId('assignmentId')&&d.activeAssignment.technicianProfileId===envId('technicianProfileId')&&d.activeAssignment.serviceRequestId===envId('serviceRequestId'));}",
+              "function page(d){check('Valid page shape',Array.isArray(d.items)&&Number.isSafeInteger(d.page)&&Number.isSafeInteger(d.size)&&d.size>0&&Number.isSafeInteger(d.totalElements)&&Number.isSafeInteger(d.totalPages));}",
+              "",
+              "try{check('HTTP 200',pm.response.code===200);const envelope=pm.response.json();check('ApiResponse success/status',envelope.success===true&&envelope.status===pm.response.code&&Object.hasOwn(envelope,'data'));safe(envelope,false);const d=envelope.data;let repeat=false;",
+              "ownership(d);assignment(d);check('Persisted accepted state',d.request.status==='ACCEPTED'&&d.activeAssignment.status==='ACCEPTED');check('Persisted history exact',JSON.stringify(history(d))===pm.environment.get('updatedHistory'));",
+              "if(!repeat)pm.environment.set('lastStep','14');",
+              "}catch(error){pm.environment.set('runBlocked','Request 14 failed. Review assertion names, fix local prerequisites and restart at 01.');pm.execution.setNextRequest(null);pm.test('Run stopped after failure',()=>pm.expect(false,'Verification failed; do not continue manually.').to.equal(true));}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{adminAccessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/service-requests/{{serviceRequestId}}"
+      }
+    },
+    {
+      "name": "15 - Final retained request integrity",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "function block(message){pm.environment.set('runBlocked',message);pm.execution.setNextRequest(null);pm.test('Prerequisites',()=>pm.expect(false,message).to.equal(true));pm.execution.skipRequest();}",
+              "if(pm.environment.get('baseUrl')!=='http://localhost:8081')block('Use only the local backend origin http://localhost:8081.');",
+              "if(pm.environment.get('runBlocked'))block('Run is blocked. Restart the complete collection after resolving the failure.');",
+              "if(Number(pm.environment.get('lastStep'))!==15-1)block('Run all requests in order using Collection Runner, beginning at 01.');",
+              ""
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "function check(label,condition){pm.test(label,()=>pm.expect(Boolean(condition),label).to.equal(true));if(!condition)throw Error(label);}",
+              "function positive(value){return Number.isSafeInteger(value)&&value>0;}",
+              "function envId(key){return Number(pm.environment.get(key));}",
+              "function saveId(key,value){check('Valid '+key,positive(value));pm.environment.set(key,String(value));}",
+              "function safe(value,auth=false){if(typeof value==='string'){for(const key of (auth?['superAdminPassword']:['superAdminPassword','adminAccessToken','adminRefreshToken'])){const secret=pm.environment.get(key);check('No secret value echoed',!secret||value!==secret);}}if(value&&typeof value==='object')for(const [key,v] of Object.entries(value)){check('No forbidden secret field',!['password','passwordHash','otpHash','tokenHash','otp','authorization','stackTrace'].includes(key));if(!auth)check('No session secrets in operational response',!['accessToken','refreshToken'].includes(key));safe(v,auth);}}",
+              "function history(d){check('History is an array',Array.isArray(d.history));const ids=new Set();for(const h of d.history){check('History IDs unique',positive(h.id)&&!ids.has(h.id));ids.add(h.id);check('History contains real transitions',h.fromStatus==null||h.fromStatus!==h.toStatus);}return d.history;}",
+              "function ownership(d){check('Request identity and ownership',d.request.id===envId('serviceRequestId')&&d.request.customerProfileId===envId('customerProfileId')&&d.request.liftId===envId('liftId'));}",
+              "function assignment(d){check('Authoritative assignment maps selected technician',d.activeAssignment&&d.activeAssignment.id===envId('assignmentId')&&d.activeAssignment.technicianProfileId===envId('technicianProfileId')&&d.activeAssignment.serviceRequestId===envId('serviceRequestId'));}",
+              "function page(d){check('Valid page shape',Array.isArray(d.items)&&Number.isSafeInteger(d.page)&&Number.isSafeInteger(d.size)&&d.size>0&&Number.isSafeInteger(d.totalElements)&&Number.isSafeInteger(d.totalPages));}",
+              "",
+              "try{check('HTTP 200',pm.response.code===200);const envelope=pm.response.json();check('ApiResponse success/status',envelope.success===true&&envelope.status===pm.response.code&&Object.hasOwn(envelope,'data'));safe(envelope,false);const d=envelope.data;let repeat=false;",
+              "ownership(d);assignment(d);check('Retained request matches run',d.request.title===pm.environment.get('runId')&&d.request.status==='ACCEPTED'&&d.request.completedAt===null&&d.report===null);check('Final history matches authoritative response',JSON.stringify(history(d))===pm.environment.get('updatedHistory'));check('Exactly three lifecycle events',d.history.length===3);check('No failed prerequisites',!pm.environment.get('runBlocked'));pm.execution.setNextRequest(null);",
+              "if(!repeat)pm.environment.set('lastStep','15');",
+              "}catch(error){pm.environment.set('runBlocked','Request 15 failed. Review assertion names, fix local prerequisites and restart at 01.');pm.execution.setNextRequest(null);pm.test('Run stopped after failure',()=>pm.expect(false,'Verification failed; do not continue manually.').to.equal(true));}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{adminAccessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/service-requests/{{serviceRequestId}}"
+      }
+    }
+  ]
+}
