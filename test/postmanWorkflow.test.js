@@ -1,0 +1,14 @@
+﻿import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+const collection=JSON.parse(readFileSync(new URL('../postman/Valor_Admin_Portal_Stage3_Workflow_Local.postman_collection.json',import.meta.url)));
+const script=collection.item[11].event.find(e=>e.listen==='test').script.exec.join('\n');
+const helpers=script.slice(script.indexOf('function timestampParts'),script.indexOf('function ownership'));
+const {sameEvent,sameHistory}=new Function(helpers+';return {sameEvent,sameHistory};')();
+const event={id:1,fromStatus:'PENDING',toStatus:'ASSIGNED',changedByUserId:1,notes:'Test only',changedAt:'2030-01-01T10:00:00.123456789'};
+test('Postman history accepts MySQL microsecond rounding and truncation',()=>{for(const changedAt of ['2030-01-01T10:00:00.123456','2030-01-01T10:00:00.123457'])assert(sameEvent(event,{...event,changedAt}));});
+test('Postman history handles second rollover and insignificant zero precision',()=>{assert(sameEvent({...event,changedAt:'2030-01-01T10:00:00.999999900'},{...event,changedAt:'2030-01-01T10:00:01'}));assert(sameEvent({...event,changedAt:'2030-01-01T10:00:00.120000'},{...event,changedAt:'2030-01-01T10:00:00.12'}));});
+test('Postman history still rejects changed event identities, notes, actors and statuses',()=>{for(const change of [{id:2},{notes:'Altered'},{changedByUserId:2},{fromStatus:'ACCEPTED'},{toStatus:'COMPLETED'}])assert(!sameEvent(event,{...event,...change}));});
+test('Postman history rejects significant or persisted timestamp changes',()=>{assert(!sameEvent(event,{...event,changedAt:'2030-01-01T10:00:00.123458'}));assert(!sameEvent({...event,changedAt:'2030-01-01T10:00:00.123456'},{...event,changedAt:'2030-01-01T10:00:00.123457'}));});
+test('Postman history compares events independently of JSON property order but detects growth and duplicates',()=>{const reversed=Object.fromEntries(Object.entries(event).reverse());assert(sameHistory([reversed],JSON.stringify([event])));assert(!sameHistory([event,event],JSON.stringify([event])));assert(!sameHistory([],JSON.stringify([event])));});
+test('All collection scripts parse and no raw JSON history comparison remains',()=>{for(const item of collection.item)for(const event of item.event){const source=event.script.exec.join('\n');new Function(source);assert(!source.includes('JSON.stringify(history(d))==='));assert(!source.includes('JSON.stringify(x)===JSON.stringify(y)'));}});
