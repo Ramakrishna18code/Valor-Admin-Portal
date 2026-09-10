@@ -1,3 +1,13 @@
+# Admin Portal Stage 3A accepted - 11 September 2026
+
+- Stage 3A is accepted at the user's direction following successful live API/MySQL verification and user-confirmed browser smoke verification.
+- Browser observations: the service-request list loaded from the real backend; customer, building, lift and technician selectors used real directory/API data; a request was created, assigned and status-updated through the Portal UI; detail/history rendered correctly after refresh; network requests used /api/v1 routes only; no red browser-console application errors were observed.
+- Evidence remains distinct: these browser observations were supplied by the user, not independently replayed by the assistant. Prior Postman/MySQL verification passed 2,383 assertions with zero failures/skips/errors. Automated baseline: 64 portal tests passed and production build passed. No additional browser scenarios are claimed beyond the reported observations.
+- This acceptance supersedes the earlier pending-browser acceptance statements below. No remaining Stage 3A acceptance blocker under the user's decision. Technician-only actions, notifications and other deferred modules remain outside this stage; no later stage was started.
+- Documentation-only follow-up: no tests rerun or application/Postman files changed. README.md remains preserved and unstaged. Backend, databases, other clients and website were not accessed or modified. No credentials or private response values recorded. Nothing pushed; commits are ready for an explicitly authorized push of master.
+
+## Historical verification evidence
+
 # Stage 3A live API/MySQL verification passed - 11 September 2026
 
 - User-confirmed final run after collection fix 44de013: 2,383 assertions passed, 0 failed, 0 skipped, 0 errors. Live local backend/MySQL workflow verification succeeded, including retained request, assignment and history integrity checks.
