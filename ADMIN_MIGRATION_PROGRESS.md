@@ -1,3 +1,31 @@
+# Admin Portal Stage 3A implementation - 11 September 2026
+
+- Branch: existing authorized master; no branch operations or push. Stage 1/2 acceptance remains unchanged. Stage 3A implementation is complete with automated validation; live browser/MySQL verification is pending.
+- Authority: published backend contract at https://raw.githubusercontent.com/Ramakrishna18code/Valor-Backend/fad7b60/BACKEND_API_CONTRACT.md, corroborated with local read-only workflow DTO/service inspection. Backend files were not modified.
+- Directory pickers: GET `/api/v1/admin/customers` and `/api/v1/admin/technicians`, q search, page, size=10, active=true. Profile IDs come only from selected returned rows, never normal manually typed ID inputs. Customer status must also be ACTIVE. Phone/address and unrelated personal details are not rendered. Selection resets dependent building/lift choices.
+- Asset relationships: existing GET `/api/v1/buildings` and `/api/v1/lifts` through Stage 2 services. Creation limits choices to active buildings owned by the selected customer profile and active lifts belonging to the selected building. Backend remains responsible for final eligibility checks.
+
+| Screen action | Endpoint |
+|---|---|
+| Request list, status/priority filters and pagination | GET /api/v1/service-requests |
+| Request detail, active assignment, history and historical report | GET /api/v1/service-requests/{id} |
+| Create request with selected customerProfileId and liftId | POST /api/v1/service-requests |
+| Assign/reassign selected technicianProfileId | POST /api/v1/service-requests/{id}/assignments |
+| Submit supported next status and notes | POST /api/v1/service-requests/{id}/status |
+
+- Existing centralized API/session handling provides envelopes, single-flight refresh, one retry, logout on failed refresh and distinct 401/403 handling. No duplicate fetch/token implementation or dependencies added. Failed loads clear results; failed mutations clear detail and require reload. No optimistic state changes or fabricated fallback records/counts.
+- The documented transition graph filters UI actions only; backend responses determine actual status. PENDING assignment uses the assignment route, not a status shortcut. Admin ACCEPTED status uses the authorized status route, never the technician-only acceptance route. Reassignment and status writes require confirmation. Waiting/cancellation require notes; completion is offered only with a valid report tied to the accepted active assignment and is still validated by the backend. Advanced reassignment awaits technician acceptance before further progress.
+- Request/report/assignment/history display whitelists response fields, handles null report/assignment/history, and preserves terminal reports. Reports are read-only. Directory and list stale requests are ignored after filter/navigation changes.
+- Intentionally excluded: technician job routes, dedicated assignment acceptance endpoint, report creation/editing, notifications, emergency/dispatch/Kanban and all other deferred modules. Existing legacy module files remain unimported. No workflow staff-directory fallback or manually entered profile ID was connected.
+- Validation: full `npm test` passed with 58 tests, zero failures/skips (41 existing plus 17 new workflow/API/view cases). `npm run build` passed. No lint/type-check scripts configured. Initial build detected non-UTF-8 encoding in the new component; corrected to UTF-8 and reran both commands successfully. Source scans found no obsolete workflow routes, direct fetch/session handling, token/password logging or technician-only route calls in the new active workflow code.
+- Files: src/api/workflow.js, src/api/runtime.js, src/workflowModules.jsx, src/workflow.css, src/main.jsx, test/workflow.test.js, test/views.test.js and this progress record.
+- Live verification: not performed. Tests use isolated fake transports and server-rendered React views; no claim of observed browser behavior or real-MySQL workflow success. Next: verify directory selection, retained request creation, assignment, status/history/report views against the running local backend before accepting Stage 3A live verification.
+- Safety: unrelated README.md remains preserved/unstaged and excluded. No credentials, tokens, headers or private local records recorded. Backend, database schemas/migrations, valor_lift_db, Android, technician client/backend, website and other repositories were not modified; no database was accessed. No push.
+
+## Historical Stage 1/2 records
+
+Stage 2 statements deferring service workflow below describe that earlier stage; the Stage 3A implementation record above supersedes them for this scope only.
+
 # Admin Portal Stage 2 implementation - 10 September 2026
 
 - Branch: authorized `master`; no branch operations or push. Stage 1 remains accepted. Stage 2 implementation and live verification are complete; Stage 2 is accepted based on the user-confirmed manual observations recorded below.

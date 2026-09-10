@@ -10,3 +10,6 @@ export const session = createSession(storage);
 const client = createApiClient({baseUrl:import.meta.env.VITE_API_BASE_URL, session});
 export const services = createServices(client, session);
 export const assetServices = createAssetServices(client);
+
+import { createWorkflowServices } from './workflow.js';
+export const workflowServices = createWorkflowServices(client);
