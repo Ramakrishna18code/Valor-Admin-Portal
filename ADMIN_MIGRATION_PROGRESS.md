@@ -1,3 +1,15 @@
+# Admin Portal Stage 3B accepted - 11 September 2026
+
+- Stage 3B is accepted at the user's direction following successful live Postman/MySQL and Portal browser verification. Earlier pending-verification statements below are historical and superseded by this acceptance.
+- Final Stage 3B Postman/MySQL collection result: 999 assertions passed, 0 failed, 0 skipped, 0 errors.
+- User-confirmed browser evidence: the personal inbox loaded from the real backend; recipient selection and IN_APP compose worked; the created notification persisted after refresh; status filtering worked; mark-read persisted after refresh; the browser console had no red application errors; notification network traffic used /api/v1 routes only.
+- Evidence sources remain distinct: Postman verifies the API/MySQL flow, while the user supplied the browser observations above. The assistant did not independently replay either live verification. No credentials, tokens, headers, response bodies or private record values are recorded.
+- Existing automated baseline: 76 portal tests passed and production build passed. No tests were rerun for this documentation-only acceptance. No remaining Stage 3B acceptance blocker under the user's decision; no additional unobserved scenario is claimed as tested.
+- Backend-unsupported sent history, bulk/external delivery and unread totals remain unavailable. Other deferred modules remain deferred; no later stage was started.
+- Only this progress document changed. README.md remains preserved and unstaged; existing Postman environments/secrets were not accessed or modified. Backend, databases, other clients and website were untouched. Implementation, verification kit and this acceptance record are ready for an explicitly authorized push of master. Nothing was pushed.
+
+## Historical Stage 3B implementation and verification records
+
 # Stage 3B local Postman verification kit - 11 September 2026
 
 - Added postman/Valor_Admin_Portal_Stage3B_Notifications_Local.postman_collection.json and matching .postman_environment.json. Local development only, enforced baseUrl=http://localhost:8081. API verification does not prove Portal rendering, UI controls or browser console state.
