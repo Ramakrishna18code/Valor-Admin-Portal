@@ -1,3 +1,18 @@
+# Stage 3A live API/MySQL verification passed - 11 September 2026
+
+- User-confirmed final run after collection fix 44de013: 2,383 assertions passed, 0 failed, 0 skipped, 0 errors. Live local backend/MySQL workflow verification succeeded, including retained request, assignment and history integrity checks.
+- The user confirmed that the earlier failure was solely timestamp precision handling in the Postman assertion and is resolved. The earlier pending-rerun statements below are historical and superseded by this successful result.
+- This establishes live backend API integration through the Postman collection, not portal browser rendering or UI-control acceptance. The assistant did not independently replay the live run. No response bodies, private record values, credentials, tokens or headers are recorded.
+- Automated baseline remains 64 passing portal tests and a passing production build. No rerun was necessary for this documentation-only update.
+- Smallest remaining browser smoke checks for full Stage 3A acceptance:
+  1. In Service Requests, confirm filters/paging and searchable customer/technician pickers work; changing customer/building resets dependent selections and shows only matching active assets.
+  2. Create a request through the UI, assign a selected technician, and submit an allowed status with the required notes/confirmation. Verify the returned request, active assignment and history render correctly and remain after refresh. Confirm existing report/no-report and no-active-assignment states render read-only where applicable; do not create a report from the portal.
+  3. Confirm invalid form input shows feedback and a failed/forbidden request shows an error without stale or fabricated results. Observe no red application console errors and only the intended /api/v1 workflow requests; do not share sensitive network details.
+- Full Stage 3A browser acceptance remains pending only those observations. Existing automated authentication/refresh/role tests remain supporting evidence; no new authentication migration is required.
+- Documentation only: README.md remains preserved and unstaged; existing Postman files/environment secrets were not accessed or modified. Backend, databases, other clients and website were untouched. No push. Implementation, verification kit, precision fix and this record are ready for an explicitly authorized push on master.
+
+## Historical Stage 3A implementation and verification records
+
 # Stage 3A Postman history comparison correction - 11 September 2026
 
 - User run reached request 12 with HTTP 200, then failed Assigned history unchanged; the second failed assertion was the intentional fail-fast marker, not a second independent defect. No live response bodies or credentials were copied.
