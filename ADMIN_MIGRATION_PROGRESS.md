@@ -1,3 +1,34 @@
+# Admin Portal Stage 2 implementation - 10 September 2026
+
+- Branch: authorized `master`; no branch operations or push. Stage 1 remains accepted. Stage 2 implementation is complete with automated validation; live acceptance remains pending.
+- Scope: Buildings, Lifts, AMC contracts and backend-supported staff provisioning. Reuses the Stage 1 HTTP/session client; no duplicate token or refresh handling and no new dependencies.
+
+| Screen action | Backend route (client adds `/api/v1`) |
+|---|---|
+| Buildings list/create | GET /buildings; POST /buildings |
+| Buildings edit/deactivate | PUT /buildings/{id}; DELETE /buildings/{id} |
+| Lifts list/create | GET /lifts; POST /lifts |
+| Lifts edit/deactivate | PUT /lifts/{id}; DELETE /lifts/{id} |
+| AMC list/create | GET /amc-contracts; POST /amc-contracts |
+| AMC renewal | PUT /amc-contracts/{id}/renew |
+| Staff creation/deactivation | POST /admin/users; DELETE /admin/users/{userId} |
+
+- Asset forms whitelist backend DTO fields; preserve customerProfileId/buildingId during editing and reject ownership transfer. Lift requests contain no customerId. Optional values and dates remain nullable; healthScore is an integer 0-100. List requests reject malformed/null envelopes rather than inventing empty success; actual empty arrays show an empty state.
+- Asset writes require ADMIN/SUPER_ADMIN in the portal. Deactivation requires explicit confirmation, waits for the backend and reloads authoritative rows; no optimistic removal or physical deletion claim. Errors clear visible list data and display validation/forbidden/backend states with retry. Backend authorization remains authoritative.
+- AMC status, covered, asOfDate and dates are displayed directly from responses; no client-calculated authoritative coverage. Create and renewal schemas differ. Renewal start must follow the existing end date and end must not precede start. No unsupported AMC delete/edit endpoint is exposed.
+- Staff screen requires SUPER_ADMIN. Creatable roles are ADMIN and TECHNICIAN; ADMIN omits profile fields. Technician fields follow the frozen contract: nullable employeeId/assignedArea/specialization, availability AVAILABLE/BUSY/OFF_DUTY/ON_LEAVE, default AVAILABLE when omitted. Form guidance requests these fields where available without inventing stricter backend requirements. Password is masked, never persisted/rendered in results and cleared on submission; response projection whitelists safe staff fields.
+- Missing capabilities: no staff list/search/detail GET endpoint, no staff edit/reactivation, and no admin customer-directory GET endpoint in the frozen contract. Staff directory UI is explicitly disabled; deactivation requires a known staff user ID. Building creation uses a known customer profile ID; lift/AMC parent IDs come from the supported asset lists. Backend validates existence and active state. These lookup limitations do not silently trigger guessed requests.
+- Removed active assumptions: legacy generic module wiring (/api/amcs, /api/admin, /api/customers), mock/fallback records, duplicate lift customer ownership, unsupported staff directory and unrestricted role selection. Retired adminModules.jsx remains unimported; it is not a fallback. The shell/style is retained, with focused form/table/error styling.
+- Tests: full `npm test` passed with 41 tests, zero failures/skips (25 existing plus 16 Stage 2 cases). `npm run build` passed. No lint/type-check scripts are configured. Existing Node test runner and Vite server-render tests were reused. Coverage includes list/create/update/deactivate, AMC renewal, constraints/nulls, shared envelopes/401 refresh/403 errors, confirmations, staff constraints and password exclusion, and active-source regression scans.
+- Files: src/api/assets.js, src/api/runtime.js, src/assetModules.jsx, src/assetModules.css, src/main.jsx, test/assets.test.js, test/views.test.js, and this record.
+- Live verification: not performed; no HTTP requests to the backend or databases. Tests use fake transport responses and server-rendered views. Next: verify retained-record asset creation/edit/deactivation and AMC renewal plus SUPER_ADMIN provisioning against the local backend using private credentials, then record acceptance.
+- Deferred: customer management/directory, service workflow/emergency/schedule, technician assignments, notifications, payments/invoices, inventory, reports/exports, roles/audit/settings and all unsupported staff capabilities. No deferred module was connected to guessed routes.
+- Safety: README.md remains preserved/unstaged and excluded. Backend contract/progress/DTO sources were read only to reconcile exact supported fields. No backend changes, migration/database access, Android/technician/website changes or secret values committed.
+
+## Historical Stage 1 records
+
+The earlier Stage 2-not-started statements below describe prior acceptance checkpoints and are superseded by the Stage 2 implementation record above.
+
 # Admin Portal Stage 1 accepted - 10 September 2026
 
 Final acceptance is based on the user's manual browser observations and the existing automated coverage, explicitly accepted as sufficient by the user.

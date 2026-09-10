@@ -3,9 +3,11 @@ import { createRoot } from 'react-dom/client';
 import { Home, ClipboardList, AlertTriangle, CalendarDays, Wrench, Users, Building2, Layers3, ShieldCheck, CreditCard, ReceiptText, Package, RefreshCw, Bell, BarChart3, Download, UserRound, Database, Settings, ChevronDown, ChevronRight, Menu, X, LogOut, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import './styles.css';
 import './migration.css';
-import { services, session } from './api/runtime.js';
+import { services, session, assetServices } from './api/runtime.js';
 import { routeState } from './api/services.js';
 import { SummaryView, ProtectedContent } from './views.jsx';
+import { AssetPage, StaffPage } from './assetModules.jsx';
+const migrated = new Set(['dashboard','buildings','lifts','amc','admin-users']);
 const navGroups = [
   { label: 'MAIN', items: [{ id: 'dashboard', label: 'Dashboard', icon: Home }] },
   { label: 'OPERATIONS', items: [
@@ -21,7 +23,7 @@ const navGroups = [
   { label: 'COMMUNICATION', items: [{ id: 'notifications', label: 'Notifications', icon: Bell }] },
   { label: 'ANALYTICS', items: [{ id: 'reports', label: 'Reports', icon: BarChart3 }, { id: 'exports', label: 'Exports', icon: Download }] },
   { label: 'ADMINISTRATION', items: [
-    { id: 'admin-users', label: 'Admin Users', icon: UserRound }, { id: 'roles', label: 'Roles & Permissions', icon: ShieldCheck },
+    { id: 'admin-users', label: 'Staff provisioning', icon: UserRound }, { id: 'roles', label: 'Roles & Permissions', icon: ShieldCheck },
     { id: 'audit', label: 'Audit Log', icon: Database }, { id: 'settings', label: 'Settings', icon: Settings }
   ]}
 ];
@@ -51,12 +53,12 @@ function App() {
     <aside className={`sidebar ${mobileNav ? 'mobile-open' : ''}`}>
       <div className="brand"><div className="brand-mark"><span>V</span></div><div className="brand-copy"><strong>valor</strong><small>Lift Services</small></div><button className="mobile-close" aria-label="Close navigation" onClick={() => setMobileNav(false)}><X size={18}/></button></div>
       <div className="workspace-switcher"><div className="workspace-avatar">VO</div><div><b>Valor Operations</b><span>Admin workspace</span></div><ChevronDown size={15}/></div>
-      <nav className="nav">{navGroups.map(group => <div className="nav-group" key={group.label}><span className="nav-label">{group.label}</span>{group.items.map(({id,label,icon:Icon}) => <button key={id} title={id === 'dashboard' ? label : `${label} ? migration deferred`} className={`nav-item ${active === id ? 'active' : ''}`} onClick={() => { setActive(id); setMobileNav(false); }}><Icon size={17}/><span>{label}{id !== 'dashboard' && <small className="deferred-tag">Deferred</small>}</span></button>)}</div>)}</nav>
+      <nav className="nav">{navGroups.map(group => <div className="nav-group" key={group.label}><span className="nav-label">{group.label}</span>{group.items.map(({id,label,icon:Icon}) => <button key={id} title={migrated.has(id) ? label : `${label} ? migration deferred`} className={`nav-item ${active === id ? 'active' : ''}`} onClick={() => { setActive(id); setMobileNav(false); }}><Icon size={17}/><span>{label}{!migrated.has(id) && <small className="deferred-tag">Deferred</small>}</span></button>)}</div>)}</nav>
       <div className="sidebar-bottom"><button className="collapse-btn" onClick={() => setSidebarOpen(!sidebarOpen)}>{sidebarOpen ? <PanelLeftClose size={17}/> : <PanelLeftOpen size={17}/>}<span>{sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}</span></button></div>
     </aside>
     {mobileNav && <div className="mobile-scrim" onClick={() => setMobileNav(false)}/>}
     <main className="main"><header className="topbar"><button className="mobile-menu" aria-label="Open navigation" onClick={() => setMobileNav(true)}><Menu size={20}/></button><div className="breadcrumbs"><span>Valor Operations</span><ChevronRight size={14}/><b>{activeLabel}</b></div><div className="topbar-actions"><div className="user-copy"><b>{user.email || 'Administrator'}</b><span>{user.role === 'SUPER_ADMIN' ? 'Super admin' : 'Admin'}</span></div><button className="secondary-btn" disabled={loggingOut} onClick={logout}><LogOut size={15}/>{loggingOut ? 'Signing out...' : 'Log out'}</button></div></header>
-      <div className="content">{active === 'dashboard' ? <Dashboard/> : <section className="panel empty-state"><h1>{activeLabel}</h1><p>This module is deferred until its API migration. No data or actions are connected.</p><button className="secondary-btn" onClick={() => setActive('dashboard')}>Back to dashboard</button></section>}</div>
+      <div className="content">{active === 'dashboard' ? <Dashboard/> : ['buildings','lifts','amc'].includes(active) ? <AssetPage key={active} kind={active} api={assetServices[active]} user={user}/> : active === 'admin-users' ? <StaffPage api={assetServices.staff} user={user}/> : <section className="panel empty-state"><h1>{activeLabel}</h1><p>This module is deferred until its API migration. No data or actions are connected.</p><button className="secondary-btn" onClick={() => setActive('dashboard')}>Back to dashboard</button></section>}</div>
     </main>
   </div></ProtectedContent>;
 }
