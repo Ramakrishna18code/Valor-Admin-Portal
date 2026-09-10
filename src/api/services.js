@@ -1,39 +1,32 @@
-import { apiRequest } from './client';
-
-export const authApi = {
-  login: (body) => apiRequest('/api/auth/admin/login', { method: 'POST', body: JSON.stringify(body) }),
-  me: () => apiRequest('/api/admin/me')
-};
-
-export const dashboardApi = {
-  serviceJobs: () => apiRequest('/api/admin/dashboard/service-jobs'),
-  summary: () => apiRequest('/api/reports/summary')
-};
-
-const listApi = (resource) => ({
-  list: (query = '') => apiRequest(`/api/${resource}${query}`),
-  get: (id) => apiRequest(`/api/${resource}/${id}`),
-  update: (id, body) => apiRequest(`/api/${resource}/${id}`, { method: 'PUT', body: JSON.stringify(body) })
-});
-
-export const customerApi = listApi('customers');
-export const buildingApi = listApi('buildings');
-export const liftApi = listApi('lifts');
-export const amcApi = listApi('amc-contracts');
-export const technicianApi = listApi('technicians');
-export const paymentApi = listApi('payments');
-export const inventoryApi = listApi('inventory');
-export const notificationApi = listApi('notifications');
-export const reportApi = { summary: () => apiRequest('/api/reports/summary') };
-export const adminApi = listApi('admin/users');
-
-export const serviceRequestApi = {
-  ...listApi('service-requests'),
-  create: (body) => apiRequest('/api/service-requests', { method: 'POST', body: JSON.stringify(body) }),
-  remove: (id) => apiRequest('/api/service-requests/' + id, { method: 'DELETE' }),
-  search: (query) => apiRequest(`/api/service-requests/search${query}`),
-  assign: (id, body) => apiRequest(`/api/service-requests/${id}/assign`, { method: 'PUT', body: JSON.stringify(body) }),
-  start: (id) => apiRequest(`/api/service-requests/${id}/start`, { method: 'PUT' }),
-  complete: (id, body) => apiRequest(`/api/service-requests/${id}/complete`, { method: 'PUT', body: JSON.stringify(body) })
-};
-
+import { ApiError } from './client.js';
+export const isAdmin = user => ['ADMIN', 'SUPER_ADMIN'].includes(user?.role);
+export const routeState = (loading, user) => loading ? 'loading' : isAdmin(user) ? 'authenticated' : 'login';
+export const summaryFields = ['totalCustomers','totalLifts','totalRequests','pendingJobs','completedJobs','emergencyJobs','totalTechnicians','totalAmcs'];
+export function mapSummary(data) {
+  if (!data || summaryFields.some(key => !Number.isSafeInteger(data[key]) || data[key] < 0)) throw new ApiError(502, 'Valor returned an invalid dashboard summary.');
+  return Object.fromEntries(summaryFields.map(key => [key, data[key]]));
+}
+export function createServices(client, session) {
+  async function me() {
+    const user = await client.request('/me');
+    if (!isAdmin(user) || !user.userId) { session.clear(); throw new ApiError(403, 'Only administrators can enter this portal.'); }
+    return user;
+  }
+  return {
+    auth: {
+      async login({email, password}) {
+        session.clear();
+        const data = await client.request('/auth/login/admin', {public:true, method:'POST', body:{email:email.trim().toLowerCase(), password}});
+        if (!isAdmin(data) || !data.userId) throw new ApiError(403, 'Only administrators can enter this portal.');
+        try { session.set(data); return await me(); } catch (error) { session.clear(); throw error; }
+      },
+      me,
+      async restore() { if (!session.get()) return null; try { return await me(); } catch (error) { session.clear(); throw error; } },
+      async logout() {
+        try { if (session.get()) await client.request('/auth/logout', {method:'POST', body:() => ({refreshToken:session.get()?.refreshToken})}); }
+        finally { session.clear(); }
+      }
+    },
+    dashboard: { summary: async () => mapSummary(await client.request('/admin/dashboard/summary')) }
+  };
+}
