@@ -17,8 +17,8 @@ test('protected content and dashboard render loading, empty, errors and real met
   assert(render(SummaryView,{error:{status:500,message:'Unavailable'}}).includes('Dashboard unavailable'));
   const data=Object.fromEntries(summaryFields.map(key=>[key,0]));
   assert(render(SummaryView,{data}).includes('No operational records yet'));
-  const html=render(SummaryView,{data:{...data,totalRequests:123}});
-  assert(html.includes('123'));assert(html.includes('Service requests'));assert(!html.includes('Jobs today'));
+  const html=render(SummaryView,{data:{...data,totalRequests:123},health:{backendUrl:'http://localhost:8081',checkedAt:'2026-09-15T00:00:00.000Z'}});
+  assert(html.includes('123'));assert(html.includes('Service requests'));assert(html.includes('Backend API'));assert(html.includes('Connected'));assert(!html.includes('Jobs today'));assert(!html.includes('Detailed operations are deferred'));
  } finally { await server.close(); }
 });
 test('asset and staff screens show backend values, role controls and no unsupported directory',async()=>{
@@ -50,6 +50,19 @@ test('asset and staff screens show backend values, role controls and no unsuppor
  assert(render(WorkflowPage,{api:{},assets:{},user:{role:'CUSTOMER'}}).includes('Access denied'));
  }finally{await server.close();}
  });
+
+test('settings and assignment views are active admin modules',async()=>{
+ const server=await createServer({server:{middlewareMode:true},appType:'custom'});
+ try{
+ const {SettingsPage}=await server.ssrLoadModule('/src/settingsModule.jsx');
+ const {TechnicianAssignmentsPage}=await server.ssrLoadModule('/src/technicianAssignments.jsx');
+ const render=(component,props)=>renderToStaticMarkup(React.createElement(component,props));
+ assert(render(SettingsPage,{api:{},user:{role:'ADMIN'}}).includes('Loading settings'));
+ assert(render(SettingsPage,{api:{},user:{role:'CUSTOMER'}}).includes('Access denied'));
+ assert(render(TechnicianAssignmentsPage,{api:{},user:{role:'ADMIN'}}).includes('Technician Assignments'));
+ assert(render(TechnicianAssignmentsPage,{api:{},user:{role:'CUSTOMER'}}).includes('Access denied'));
+ }finally{await server.close();}
+});
 
 test('notification UI separates personal inbox and compose, renders safe timestamps and recipient-owned read actions',async()=>{
  const server=await createServer({server:{middlewareMode:true},appType:'custom'});

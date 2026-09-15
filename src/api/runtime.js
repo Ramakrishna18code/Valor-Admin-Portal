@@ -22,3 +22,6 @@ export const visitServices = createVisitServices(client);
 
 import { createCustomerServices } from './customers.js';
 export const customerServices = createCustomerServices(client);
+
+import { createSettingsServices } from './settings.js';
+export const settingsServices = createSettingsServices(client);

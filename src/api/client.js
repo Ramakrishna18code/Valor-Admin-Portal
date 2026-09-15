@@ -63,5 +63,5 @@ export function createApiClient({ baseUrl, session, fetchImpl = globalThis.fetch
       catch (retryError) { if (retryError.status === 401 && session.get() === retriedSession) session.clear(); throw retryError; }
     }
   }
-  return { request, refresh };
+  return { request, refresh, baseUrl: base };
 }

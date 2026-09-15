@@ -6,6 +6,10 @@ export function mapSummary(data) {
   if (!data || summaryFields.some(key => !Number.isSafeInteger(data[key]) || data[key] < 0)) throw new ApiError(502, 'Valor returned an invalid dashboard summary.');
   return Object.fromEntries(summaryFields.map(key => [key, data[key]]));
 }
+export function mapHealth(data, baseUrl) {
+  if (!data || data.status !== 'UP') throw new ApiError(502, 'Valor returned an invalid health response.');
+  return { status: 'Connected', backendUrl: baseUrl, checkedAt: new Date().toISOString() };
+}
 export function createServices(client, session) {
   async function me() {
     const user = await client.request('/me');
@@ -27,6 +31,9 @@ export function createServices(client, session) {
         finally { session.clear(); }
       }
     },
-    dashboard: { summary: async () => mapSummary(await client.request('/admin/dashboard/summary')) }
+    dashboard: {
+      summary: async () => mapSummary(await client.request('/admin/dashboard/summary')),
+      health: async () => mapHealth(await client.request('/health', { public: true }), client.baseUrl)
+    }
   };
 }
