@@ -19,3 +19,6 @@ export const notificationServices = createNotificationServices(client);
 
 import { createVisitServices } from './visits.js';
 export const visitServices = createVisitServices(client);
+
+import { createCustomerServices } from './customers.js';
+export const customerServices = createCustomerServices(client);

@@ -36,23 +36,25 @@ Backend/
 
 ## Local development
 
+Start the backend first from `D:\RKKKK\Valor-Backend`. It should be available
+at `http://localhost:8081`.
+
+Copy the frontend environment template once:
+
+```powershell
+Copy-Item .env.example .env
+```
+
 Install frontend dependencies:
 
 ```powershell
 npm install
 ```
 
-Start the backend from the repository root:
+Start the frontend:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\start-backend-safe.ps1
-```
-
-If port `8081` is occupied, stop the process using that port or set a different `PORT` and update the frontend API URL.
-
-Start the frontend in a second terminal:
-
-```powershell
+cd D:\RKKKK\Valor-Admin-Portal
 npm run dev
 ```
 
@@ -60,14 +62,9 @@ Open `http://localhost:5173`.
 
 ## Local admin login
 
-- Email: `admin@valor.com`
-- Password: `Admin@123`
-
-
-Additional seeded admin account:
-
-- Email: `ops@valor.com`
-- Password: `Admin@123`
+Use the local SUPER_ADMIN account configured by the backend dev bootstrap. The
+default email in the backend `.env.example` is `admin@valor.local`; the password
+is your private local value in `D:\RKKKK\Valor-Backend\.env`.
 
 ## Frontend features
 
@@ -121,35 +118,23 @@ Settings can be loaded and saved through the backend. The page includes:
 
 ## API configuration
 
-Copy `.env.example` to `.env` when a custom backend URL is required:
+The portal reads the backend origin from `.env` through Vite:
 
 ```env
 VITE_API_BASE_URL=http://localhost:8081
 ```
 
-In Vite development mode, the default API is `http://localhost:8081`. In a production build with no `VITE_API_BASE_URL`, the frontend uses the deployed Valor backend URL. For a separately hosted backend, set `VITE_API_BASE_URL` before running `npm run build`.
+In Vite development mode, the client also falls back to `http://localhost:8081`
+if `VITE_API_BASE_URL` is omitted. Set `VITE_API_BASE_URL` before running
+`npm run build` when targeting a separately hosted backend.
 
 For the deployed Vercel frontend, set `VITE_API_BASE_URL` to `https://valor-backend-rk.onrender.com`. The value is the backend host root; do not append `/api`, because frontend API paths already include that prefix.
 
 ## Backend configuration
 
-The backend reads environment variables from `application.properties`:
-
-```env
-PORT=8081
-VALOR_JWT_SECRET=replace-with-a-long-random-secret
-VALOR_JWT_EXPIRATION_HOURS=12
-VALOR_CORS_ORIGINS=http://localhost:5173,http://localhost:4173
-SPRING_DATASOURCE_URL=jdbc:h2:file:./data/valor;MODE=MySQL;AUTO_SERVER=TRUE
-```
-
-For production:
-
-- Set a long random `VALOR_JWT_SECRET`.
-- Set `VALOR_CORS_ORIGINS` to the exact deployed frontend origin(s).
-- Use a persistent database location or MySQL connection.
-- Serve the application through HTTPS.
-- Change all seeded passwords before exposing the application publicly.
+Backend configuration lives in `D:\RKKKK\Valor-Backend\.env`. For local
+development, keep `CORS_ALLOWED_ORIGINS` aligned with the portal origin
+`http://localhost:5173`.
 
 ## Build and run production artifacts
 
@@ -163,9 +148,8 @@ npm run preview
 Backend:
 
 ```powershell
-cd Backend
-mvn -q -DskipTests package
-java -jar target\valor-admin-backend-1.0.0.jar
+cd D:\RKKKK\Valor-Backend
+mvn test
 ```
 
 Set deployment environment variables before starting the backend. Build the frontend again whenever `VITE_API_BASE_URL` changes because Vite embeds that value at build time.
@@ -218,14 +202,16 @@ The backend normalizes both `ADMIN`/`SUPER_ADMIN` and `ROLE_ADMIN`/`ROLE_SUPER_A
 
 ### Backend appears offline
 
-Check port `8081`, start the backend script, and confirm that `http://localhost:8081/api/auth/admin/login` is reachable. If using another port, update both `PORT` and `VITE_API_BASE_URL`.
+Check port `8081`, start the backend from `D:\RKKKK\Valor-Backend`, and confirm
+that `http://localhost:8081/api/v1/health` is reachable. If using another port,
+update both backend `PORT` and portal `VITE_API_BASE_URL`.
 
 ## Verification commands
 
 ```powershell
 npm run build
-cd Backend
-mvn -q -DskipTests package
+cd D:\RKKKK\Valor-Backend
+mvn test
 ```
 
 Both commands should complete successfully before pushing or deploying.
