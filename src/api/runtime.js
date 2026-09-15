@@ -16,3 +16,6 @@ export const workflowServices = createWorkflowServices(client);
 
 import { createNotificationServices } from './notifications.js';
 export const notificationServices = createNotificationServices(client);
+
+import { createVisitServices } from './visits.js';
+export const visitServices = createVisitServices(client);

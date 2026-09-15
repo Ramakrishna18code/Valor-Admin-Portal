@@ -26,7 +26,8 @@ export function createApiClient({ baseUrl, session, fetchImpl = globalThis.fetch
     } catch (error) { if (error.name === 'AbortError') throw error; throw new ApiError(0, 'Cannot reach Valor. Check your connection and try again.'); }
     let payload;
     try { payload = await response.json(); } catch { throw new ApiError(response.ok ? 502 : response.status, message(response.status)); }
-    if (!response.ok) throw new ApiError(response.status, message(response.status));
+    const serverMessage = [400, 403, 404, 409].includes(response.status) && /^[A-Z][A-Za-z0-9 ,.'-]+[.!?]?$/.test(payload?.message || '') ? payload.message : null;
+    if (!response.ok) throw new ApiError(response.status, serverMessage || message(response.status));
     if (!payload || payload.success !== true || payload.status !== response.status || !Object.hasOwn(payload, 'data')) throw new ApiError(502, 'Valor returned an invalid response.');
     return payload.data;
   }
