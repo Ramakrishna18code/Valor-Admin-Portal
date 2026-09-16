@@ -4,7 +4,9 @@ import { validId } from './assets.js';
 
 const text=(value,label,max,required=false)=>{const result=String(value??'').trim();if(required&&!result)throw new ApiError(400,label+' is required.');if(max&&result.length>max)throw new ApiError(400,label+' is too long.');return result||null;};
 const email=value=>{const result=text(value,'Email',254);if(result&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(result))throw new ApiError(400,'Enter a valid email.');return result?.toLowerCase()??null;};
+const phone=(value,label)=>{const result=text(value,label,20);if(result&&!/^\+?[0-9 ()-]{7,20}$/.test(result))throw new ApiError(400,'Enter a valid '+label.toLowerCase()+'.');return result;};
 const id=value=>{if(!validId(value))throw new ApiError(400,'Select a valid customer.');return Number(value);};
+const assign=(target,key,value)=>{if(value!==null&&value!==undefined&&value!=='')target[key]=value;};
 export const customerStatuses=['all','active','inactive'];
 export function customerSummary(row){
  if(!row||!validId(row.customerProfileId)||!validId(row.userId))throw new ApiError(502,'Invalid customer response.');
@@ -19,9 +21,12 @@ export function customerDetail(data){
   serviceRequests:data.serviceRequests.map(requestView)};
 }
 export function customerPayload(draft,mode='create'){
- const body={fullName:text(draft.fullName,'Full name',160,true),alternatePhone:text(draft.alternatePhone,'Alternate phone',20),companyName:text(draft.companyName,'Company name',200),address:text(draft.address,'Address',500)};
+ const body={fullName:text(draft.fullName,'Full name',160,true)};
+ assign(body,'alternatePhone',phone(draft.alternatePhone,'Alternate phone'));
+ assign(body,'companyName',text(draft.companyName,'Company name',200));
+ assign(body,'address',text(draft.address,'Address',500));
  if(mode==='create'){
-  body.email=email(draft.email);body.phone=text(draft.phone,'Phone',20);
+  assign(body,'email',email(draft.email));assign(body,'phone',phone(draft.phone,'Phone'));
   body.password=String(draft.password??'');
   if(!body.email&&!body.phone)throw new ApiError(400,'Email or phone is required.');
   if(!body.password.trim())throw new ApiError(400,'Temporary password is required.');

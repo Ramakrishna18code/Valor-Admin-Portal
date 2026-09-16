@@ -35,7 +35,7 @@ test('customer management services use canonical admin customer routes and safe 
   await detailed.api.create({ fullName: ' New ', email: 'NEW@EXAMPLE.INVALID', password: 'Valor@123' });
   assert.equal(detailed.calls[1].path, '/admin/customers');
   assert.equal(detailed.calls[1].options.method, 'POST');
-  assert.deepEqual(detailed.calls[1].options.body, { fullName: 'New', alternatePhone: null, companyName: null, address: null, email: 'new@example.invalid', phone: null, password: 'Valor@123' });
+  assert.deepEqual(detailed.calls[1].options.body, { fullName: 'New', email: 'new@example.invalid', password: 'Valor@123' });
   await detailed.api.update(customer, { fullName: 'Updated', email: 'ignored@example.invalid', password: 'ignored' });
   assert.equal(detailed.calls[2].path, '/admin/customers/7');
   assert.equal(detailed.calls[2].options.method, 'PUT');

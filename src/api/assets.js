@@ -3,14 +3,15 @@ const field = (key,label,type='text',required=false,maxLength) => ({key,label,ty
 const id = (key,label) => ({...field(key,label,'number',true),min:1,max:Number.MAX_SAFE_INTEGER});
 const date = (key,label,required=false) => field(key,label,'date',required);
 export const availability = ['AVAILABLE','BUSY','OFF_DUTY','ON_LEAVE'];
+export const amcPlans = ['Basic Maintenance','Standard AMC','Premium AMC'];
 export const schemas = {
  buildings: [id('customerProfileId','Customer profile ID'),field('buildingName','Building name','text',true,200),field('buildingType','Building type','text',false,80),field('address','Address','text',false,500),field('city','City','text',false,100),field('state','State','text',false,100),field('pincode','Pincode','text',false,20),field('emergencyContactName','Emergency contact name','text',false,160),field('emergencyContactPhone','Emergency contact phone','text',false,20),field('status','Status (defaults to ACTIVE)','text',false,20)],
  lifts: [id('buildingId','Building ID'),field('name','Lift name','text',true,160),field('liftNumber','Lift number','text',false,80),field('model','Model','text',false,120),field('manufacturer','Manufacturer','text',false,120),{...field('capacity','Capacity','number'),min:0,max:2147483647},{...field('floorCount','Floor count','number'),min:0,max:2147483647},field('serialNumber','Serial number','text',false,120),date('installationDate','Installation date'),field('location','Location','text',false,200),{...field('currentStatus','Status','select'),options:['ACTIVE','DOWN','MAINTENANCE','OUT_OF_SERVICE']},field('warrantyStatus','Warranty status','text',false,80),date('warrantyStartDate','Warranty start'),date('warrantyEndDate','Warranty end'),date('lastMaintenanceDate','Last maintenance'),date('nextMaintenanceDate','Next maintenance'),{...field('healthScore','Health score','number'),min:0,max:100},field('machineRoom','Machine room','text',false,200),field('qrCode','QR code','text',false,255),field('specifications','Specifications','textarea')],
- amc: [id('liftId','Lift ID'),field('amcNumber','Contract number','text',true,80),field('plan','Plan','text',true,80),field('coverageDetails','Coverage details','textarea'),date('startDate','Start date',true),date('endDate','End date',true),date('renewalDate','Renewal date')],
+ amc: [id('liftId','Lift ID'),{...field('plan','Plan','select',true,80),options:amcPlans},field('coverageDetails','Coverage details','textarea'),date('startDate','Start date',true),date('endDate','End date',true),date('renewalDate','Renewal date')],
  staff: [field('email','Email','email',true,254),field('password','Password','password',true,72),{...field('role','Role','select',true),options:['ADMIN','TECHNICIAN']},field('employeeId','Employee ID','text',false,50),field('assignedArea','Assigned area','text',false,160),field('specialization','Specialization','text',false,160),{...field('availabilityStatus','Availability','select'),options:availability}]
 };
 export function fieldsFor(kind, mode='create', role='ADMIN') {
- return schemas[kind].filter(f => !(kind==='amc' && mode==='renew' && ['liftId','amcNumber'].includes(f.key)) && !(kind==='staff' && role==='ADMIN' && ['employeeId','assignedArea','specialization','availabilityStatus'].includes(f.key)));
+ return schemas[kind].filter(f => !(kind==='amc' && mode==='renew' && f.key==='liftId') && !(kind==='staff' && role==='ADMIN' && ['employeeId','assignedArea','specialization','availabilityStatus'].includes(f.key)));
 }
 export const validId = value => Number.isSafeInteger(Number(value)) && Number(value)>0;
 export function payloadFor(kind,draft,mode='create',original) {
@@ -32,6 +33,7 @@ export function payloadFor(kind,draft,mode='create',original) {
   if(result.role==='TECHNICIAN'&&!result.availabilityStatus)result.availabilityStatus='AVAILABLE';
  }
  if(kind==='amc'){
+  if(!amcPlans.includes(result.plan))throw new ApiError(400,'Choose a supported AMC plan.');
   if(result.endDate<result.startDate)throw new ApiError(400,'End date must not precede start date.');
   if(mode==='renew' && original?.endDate && result.startDate<=original.endDate)throw new ApiError(400,'Renewal must start after the current contract ends.');
  }

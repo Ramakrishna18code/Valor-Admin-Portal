@@ -62,6 +62,8 @@ export function createWorkflowServices(client){
   async assign(detail,technician,notes){return detailView(await client.request('/service-requests/'+id(detail.request.id)+'/assignments',{method:'POST',body:assignmentPayload(technician,notes)}));},
   async status(detail,toStatus,notes){return detailView(await client.request('/service-requests/'+id(detail.request.id)+'/status',{method:'POST',body:statusPayload(detail,toStatus,notes)}));},
   async attachments(value){const rows=await client.request('/service-requests/'+id(value)+'/attachments');if(!Array.isArray(rows))throw new ApiError(502,'Invalid attachment response.');return rows.map(attachmentView);},
+  async downloadAttachment(requestId,attachmentId){return client.raw('/service-requests/'+id(requestId)+'/attachments/'+id(attachmentId));},
+  async deleteAttachment(requestId,attachmentId){return client.request('/service-requests/'+id(requestId)+'/attachments/'+id(attachmentId),{method:'DELETE'});},
   async feedback(value){return feedbackView(await client.request('/service-requests/'+id(value)+'/feedback'));}
  };
 }

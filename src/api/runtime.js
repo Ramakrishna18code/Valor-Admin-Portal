@@ -25,3 +25,6 @@ export const customerServices = createCustomerServices(client);
 
 import { createSettingsServices } from './settings.js';
 export const settingsServices = createSettingsServices(client);
+
+import { createPaymentServices } from './payments.js';
+export const paymentServices = createPaymentServices(client);

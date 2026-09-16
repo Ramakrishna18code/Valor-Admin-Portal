@@ -31,6 +31,23 @@ export function createApiClient({ baseUrl, session, fetchImpl = globalThis.fetch
     if (!payload || payload.success !== true || payload.status !== response.status || !Object.hasOwn(payload, 'data')) throw new ApiError(502, 'Valor returned an invalid response.');
     return payload.data;
   }
+  async function sendRaw(path, options, tokens) {
+    if (!path.startsWith('/') || path.startsWith('//') || path.startsWith('/api/') || path.includes('..')) throw new Error('Use a relative v1 resource path');
+    let response;
+    try {
+      response = await fetchImpl(base + '/api/v1' + path, {
+        method: options.method || 'GET', signal: options.signal,
+        headers: { ...(tokens ? {Authorization: 'Bearer ' + tokens.accessToken} : {}) }
+      });
+    } catch (error) { if (error.name === 'AbortError') throw error; throw new ApiError(0, 'Cannot reach Valor. Check your connection and try again.'); }
+    if (!response.ok) {
+      let payload = null;
+      try { payload = await response.json(); } catch { /* Download endpoints may not return JSON errors. */ }
+      const serverMessage = [400, 403, 404, 409].includes(response.status) && /^[A-Z][A-Za-z0-9 ,.'-]+[.!?]?$/.test(payload?.message || '') ? payload.message : null;
+      throw new ApiError(response.status, serverMessage || message(response.status));
+    }
+    return response;
+  }
   function refresh() {
     if (refreshing) return refreshing;
     const original = session.get();
@@ -63,5 +80,19 @@ export function createApiClient({ baseUrl, session, fetchImpl = globalThis.fetch
       catch (retryError) { if (retryError.status === 401 && session.get() === retriedSession) session.clear(); throw retryError; }
     }
   }
-  return { request, refresh, baseUrl: base };
+  async function raw(path, options = {}) {
+    const generation = session.generation();
+    const original = options.public ? null : session.get();
+    if (!options.public && !original) throw new ApiError(401, message(401));
+    try { return await sendRaw(path, options, original); }
+    catch (error) {
+      if (error.status !== 401 || options.public) throw error;
+      if (!session.get() || session.generation() !== generation) throw error;
+      if (session.get() === original) await refresh();
+      const retriedSession = session.get();
+      try { return await sendRaw(path, options, retriedSession); }
+      catch (retryError) { if (retryError.status === 401 && session.get() === retriedSession) session.clear(); throw retryError; }
+    }
+  }
+  return { request, raw, refresh, baseUrl: base };
 }

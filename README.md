@@ -1,6 +1,6 @@
 # Valor Admin Portal
 
-Valor Admin Portal is a responsive operations workspace for Valor Lift Services. It provides secure admin authentication, service operations, field scheduling, asset management, finance, inventory, notifications, reports, settings, and audit-friendly administration.
+Valor Admin Portal is a responsive operations workspace for Valor Lift Services. It provides secure admin authentication, service operations, field scheduling, asset management, notifications, settings, and payment operations backed by the canonical Valor API.
 
 ## Technology
 
@@ -14,17 +14,15 @@ Valor Admin Portal is a responsive operations workspace for Valor Lift Services.
 ```text
 src/
   main.jsx                 Application shell, routing, dashboard, login
-  api/client.js            Authenticated API client and session storage
-  api/services.js          Auth, dashboard, and service-request API methods
-  adminModules.jsx         Generic CRUD pages and settings administration
-  serviceRequestsPage.jsx  Service request operations page
-  scheduleCalendar.jsx     Calendar scheduling, drag/drop, and task editing
-  dashboardActions.jsx     Dashboard View/Edit/Delete actions and CSV export
+  api/client.js            Authenticated canonical /api/v1 API client and session storage
+  api/services.js          Auth, dashboard health, and summary methods
+  api/*.js                 Customer, asset, workflow, visit, notification, and settings services
+  customerModules.jsx      Customer management
+  workflowModules.jsx      Service requests and emergency queue
+  scheduleCalendar.jsx     Service Visit calendar and change-request handling
+  technicianAssignments.jsx Technician assignment/reassignment
+  settingsModule.jsx       Persisted Admin settings
   *.css                    Responsive page and component styles
-Backend/
-  src/main/java/com/valor   Spring Boot application, security, API, persistence
-  src/main/resources         Application properties
-  pom.xml                   Maven build definition
 ```
 
 ## Requirements
@@ -78,25 +76,38 @@ is your private local value in `D:\RKKKK\Valor-Backend\.env`.
 
 ### Service Requests
 
-- Live API table with search, pagination, status, priority, technician, and service-type filters
-- Create, View, Edit, Assign, Start, Complete, and Delete operations
+- Live API table with pagination, status and priority filters
+- Create, detail/read, technician assignment/reassignment, lifecycle status updates, request attachments, and customer feedback visibility
 - Emergency queue uses the same page with emergency filtering
-- CSV export and responsive mobile drawers
-- Only one three-dot menu can be open at a time
+- Completion is backend-authoritative and requires a valid technician report; the Admin portal does not create technician reports
 
 ### Schedule
 
 - Month calendar with day selection
-- Drag tasks between dates
-- Add and edit scheduled tasks
+- Add and edit scheduled visits using backend service requests and assigned technicians
+- Technician selection uses the active accepted assignment for the selected service request
 - Refresh and unscheduled-task support
 - Responsive calendar and editor drawer
 
 ### Administration and assets
 
-Customers, Buildings, Lifts, AMC Contracts, Technicians, Payments, Inventory, Notifications, Admin Users, Roles, Invoices, Transactions, Exports, and Audit Log are connected to the generic CRUD API.
+Customers, Buildings, Lifts, AMC Contracts, Service Requests, Emergency Queue,
+Schedule/Service Visits, Technician Assignments, Notifications, Staff
+provisioning, Settings, and Payments use canonical `/api/v1` backend services.
 
-Editable modules provide responsive View, Edit, and Delete menus. Read-only modules provide View only. Buildings and lifts resolve related customer/building IDs to readable names.
+Customer creation sends the backend-supported identity and profile fields:
+email or phone, temporary password, full name, alternate phone, company name,
+and address. Building creation selects an active customer from the backend
+customer directory instead of requiring a manually typed profile ID. AMC
+creation selects a lift/customer context, uses the Basic Maintenance, Standard
+AMC, or Premium AMC plan dropdown, defaults the start date to today, defaults
+the end date to a 12-month term, and displays the backend-generated contract
+number after save.
+
+Invoices, Inventory, Inventory Transactions, Reports, Exports, Roles and
+Permissions, and Audit Log remain deferred and are not connected to active
+runtime APIs. The Payments module is preserved from Phase 1B.1 and remains
+active.
 
 ### Settings
 
@@ -105,7 +116,7 @@ Settings can be loaded and saved through the backend. The page includes:
 - Company and support contact details
 - Timezone, currency, and date format
 - Default visit duration and maintenance reminders
-- Session timeout and emergency response target
+- Emergency response target
 - Email and SMS notifications
 - JWT-authenticated admin access
 - Automatic service-request assignment
@@ -156,31 +167,39 @@ Set deployment environment variables before starting the backend. Build the fron
 
 ## Main API endpoints
 
-Authentication:
+The active portal client uses the canonical backend contract in
+`D:\RKKKK\Valor-Backend\BACKEND_API_CONTRACT.md`. `VITE_API_BASE_URL` is the
+backend origin only; `src/api/client.js` appends `/api/v1`.
 
-- `POST /api/auth/admin/login`
-- `GET /api/admin/me`
+Key active groups:
 
-Operations:
+- `POST /api/v1/auth/login/admin`
+- `GET /api/v1/me`
+- `GET /api/v1/health`
+- `GET /api/v1/admin/dashboard/summary`
+- `/api/v1/admin/customers/**`
+- `/api/v1/buildings`, `/api/v1/lifts`, `/api/v1/amc-contracts`
+- `/api/v1/service-requests/**`
+- `/api/v1/admin/service-visits/**`
+- `/api/v1/admin/visit-change-requests/**`
+- `/api/v1/admin/settings`
+- `/api/v1/notifications`
+- `/api/v1/payments`, `/api/v1/payments/{id}/refunds`
+- `/api/v1/admin/payments/reconciliation`
 
-- `GET/POST /api/service-requests`
-- `GET/PUT/DELETE /api/service-requests/{id}`
-- `PUT /api/service-requests/{id}/assign?technicianId={id}`
-- `PUT /api/service-requests/{id}/start`
-- `PUT /api/service-requests/{id}/complete`
-- `GET /api/admin/dashboard/service-jobs`
-- `GET/POST /api/schedule`
-- `PUT/DELETE /api/schedule/{id}`
+## Phase 1B payments
 
-Generic resources use the same REST pattern:
+The active Payments module is wired to the Phase 1B backend APIs. It lists
+backend payment records, shows invoice and Razorpay identifiers, requests full or
+partial refunds, reloads refund status from the backend, and displays basic
+reconciliation issues. Refunds remain backend/gateway authoritative; the UI does
+not mark a payment refunded just because an admin clicked the refund action.
 
-```text
-GET    /api/{resource}
-POST   /api/{resource}
-GET    /api/{resource}/{id}
-PUT    /api/{resource}/{id}
-DELETE /api/{resource}/{id}
-```
+Live browser workflow verification against a signed-in admin account was not
+completed in this checkpoint because no browser surface was available to the
+automation tool. Automated tests, production build, dev-server HTTP load,
+backend health, admin login, dashboard summary, customer paging, and settings
+read probes passed against the local backend.
 
 ## Troubleshooting
 
