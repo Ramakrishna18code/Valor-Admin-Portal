@@ -43,8 +43,8 @@ test('asset and staff screens show backend values, role controls and no unsuppor
  try{
  const {RequestDetail,CreateRequest,WorkflowPage}=await server.ssrLoadModule('/src/workflowModules.jsx');
  const render=(component,props)=>renderToStaticMarkup(React.createElement(component,props));
- const html=render(RequestDetail,{detail:{request:{id:31,status:'COMPLETED',completedAt:'2026-09-10'},activeAssignment:null,history:[{id:1,fromStatus:'TESTING',toStatus:'COMPLETED',notes:'Confirmed'}],report:{id:9,diagnosis:'Actual diagnosis',workPerformed:'Actual work',testingResult:'Actual test'}}});
- assert(html.includes('Actual diagnosis'));assert(html.includes('Confirmed'));assert(html.includes('No active assignment'));assert(!html.includes('<textarea'));
+ const html=render(RequestDetail,{detail:{request:{id:31,status:'COMPLETED',completedAt:'2026-09-10'},activeAssignment:null,history:[{id:1,fromStatus:'TESTING',toStatus:'COMPLETED',notes:'Confirmed'}],report:{id:9,diagnosis:'Actual diagnosis',workPerformed:'Actual work',testingResult:'Actual test'}},attachments:[{id:2,originalFilename:'issue.png',contentType:'image/png',size:1200,createdAt:'2026-09-16'}],feedback:{id:3,rating:5,comment:'Helpful',createdAt:'2026-09-16'}});
+ assert(html.includes('Actual diagnosis'));assert(html.includes('Confirmed'));assert(html.includes('issue.png'));assert(html.includes('Helpful'));assert(html.includes('No active assignment'));assert(!html.includes('<textarea'));
  const empty=render(RequestDetail,{detail:{request:{id:31},activeAssignment:null,history:[],report:null}});assert(empty.includes('No status history returned'));assert(empty.includes('No service report returned'));
  const form=render(CreateRequest,{api:{},assets:{}});assert(form.includes('Search customers'));assert(!form.includes('type="number" name="customerProfileId"'));assert(form.includes('Select customer building'));assert(!form.includes('address'));
  assert(render(WorkflowPage,{api:{},assets:{},user:{role:'CUSTOMER'}}).includes('Access denied'));

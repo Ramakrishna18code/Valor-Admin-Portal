@@ -28,6 +28,8 @@ export function detailView(value){
  history:(value.history??[]).map(row=>pick(record(row),'id fromStatus toStatus changedByUserId notes changedAt')),
  report:value.report==null?null:pick(record(value.report),'id serviceRequestId assignmentId diagnosis workPerformed testingResult completionNotes reportedByUserId createdAt updatedAt')};
 }
+export const attachmentView=value=>pick(record(value),'id serviceRequestId originalFilename contentType fileSize uploadedByUserId createdAt');
+export const feedbackView=value=>value==null?null:pick(record(value),'id serviceRequestId customerProfileId rating comment createdAt updatedAt');
 export function relatedAssets(customer,buildings,lifts,buildingId){
  const owned=customer?.active&&customer.status==='ACTIVE'?buildings.filter(b=>b.isActive&&b.customerProfileId===customer.customerProfileId):[];
  return {buildings:owned,lifts:owned.some(b=>b.id===Number(buildingId))?lifts.filter(l=>l.isActive&&l.buildingId===Number(buildingId)):[]};
@@ -58,6 +60,8 @@ export function createWorkflowServices(client){
   async detail(value){return detailView(await client.request('/service-requests/'+id(value)));},
   async create(draft,customer,buildings,lifts){return detailView(await client.request('/service-requests',{method:'POST',body:createPayload(draft,customer,buildings,lifts)}));},
   async assign(detail,technician,notes){return detailView(await client.request('/service-requests/'+id(detail.request.id)+'/assignments',{method:'POST',body:assignmentPayload(technician,notes)}));},
-  async status(detail,toStatus,notes){return detailView(await client.request('/service-requests/'+id(detail.request.id)+'/status',{method:'POST',body:statusPayload(detail,toStatus,notes)}));}
+  async status(detail,toStatus,notes){return detailView(await client.request('/service-requests/'+id(detail.request.id)+'/status',{method:'POST',body:statusPayload(detail,toStatus,notes)}));},
+  async attachments(value){const rows=await client.request('/service-requests/'+id(value)+'/attachments');if(!Array.isArray(rows))throw new ApiError(502,'Invalid attachment response.');return rows.map(attachmentView);},
+  async feedback(value){return feedbackView(await client.request('/service-requests/'+id(value)+'/feedback'));}
  };
 }
