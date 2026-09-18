@@ -3,7 +3,9 @@ import { createRoot } from 'react-dom/client';
 import { Home, ClipboardList, AlertTriangle, CalendarDays, Wrench, Users, Building2, Layers3, ShieldCheck, CreditCard, ReceiptText, Package, RefreshCw, Bell, BarChart3, Download, UserRound, Database, Settings, ChevronDown, ChevronRight, Menu, X, LogOut, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import './styles.css';
 import './migration.css';
-import { services, session, assetServices, workflowServices, notificationServices, visitServices, customerServices, settingsServices, paymentServices } from './api/runtime.js';
+import './login.css';
+import { ArrowRight, LockKeyhole, Mail, LoaderCircle, Info } from 'lucide-react';
+import { services, session, assetServices, workflowServices, notificationServices, visitServices, customerServices, settingsServices, paymentServices, financeServices, adminSecurityServices, phase15Services, communicationServices } from './api/runtime.js';
 import { routeState } from './api/services.js';
 import { SummaryView, ProtectedContent } from './views.jsx';
 import { AssetPage, StaffPage } from './assetModules.jsx';
@@ -14,11 +16,16 @@ import { CustomersPage, EmergencyQueuePage } from './customerModules.jsx';
 import { SettingsPage } from './settingsModule.jsx';
 import { TechnicianAssignmentsPage } from './technicianAssignments.jsx';
 import { PaymentsPage } from './paymentModules.jsx';
-const migrated = new Set(['dashboard','buildings','lifts','amc','admin-users','service-requests','notifications','schedule','customers','emergency','technicians','settings','payments']);
+import { TransactionsPage, ReportsPage } from './financeModules.jsx';
+import { RolesPage, AuditLogPage } from './adminSecurityModules.jsx';
+import { ChecklistTemplatesPage, TechnicianProfileAdminPage } from './phase15Modules.jsx';
+import { CommunicationsPage } from './communicationModules.jsx';
+import './valorDesign.css';
+const migrated = new Set(['dashboard','buildings','lifts','amc','admin-users','service-requests','notifications','communications','schedule','customers','emergency','technicians','settings','payments','transactions','reports','exports','roles','audit','checklists','technician-profiles']);
 const navGroups = [
   { label: 'MAIN', items: [{ id: 'dashboard', label: 'Dashboard', icon: Home }] },
   { label: 'OPERATIONS', items: [
-    { id: 'service-requests', label: 'Service Requests', icon: ClipboardList }, { id: 'emergency', label: 'Emergency Queue', icon: AlertTriangle },
+    { id: 'service-requests', label: 'Service Requests', icon: ClipboardList }, { id: 'checklists', label: 'Checklists', icon: ClipboardList }, { id: 'emergency', label: 'Emergency Queue', icon: AlertTriangle },
     { id: 'schedule', label: 'Schedule', icon: CalendarDays }, { id: 'technicians', label: 'Technician Assignments', icon: Wrench }
   ]},
   { label: 'ASSETS', items: [
@@ -27,10 +34,10 @@ const navGroups = [
   ]},
   { label: 'FINANCE', items: [{ id: 'payments', label: 'Payments', icon: CreditCard }, { id: 'invoices', label: 'Invoices', icon: ReceiptText }] },
   { label: 'INVENTORY', items: [{ id: 'inventory', label: 'Stock', icon: Package }, { id: 'transactions', label: 'Transactions', icon: RefreshCw }] },
-  { label: 'COMMUNICATION', items: [{ id: 'notifications', label: 'Notifications', icon: Bell }] },
+  { label: 'COMMUNICATION', items: [{ id: 'notifications', label: 'Notifications', icon: Bell }, { id: 'communications', label: 'Communications', icon: Bell }] },
   { label: 'ANALYTICS', items: [{ id: 'reports', label: 'Reports', icon: BarChart3 }, { id: 'exports', label: 'Exports', icon: Download }] },
   { label: 'ADMINISTRATION', items: [
-    { id: 'admin-users', label: 'Staff provisioning', icon: UserRound }, { id: 'roles', label: 'Roles & Permissions', icon: ShieldCheck },
+    { id: 'admin-users', label: 'Staff provisioning', icon: UserRound }, { id: 'technician-profiles', label: 'Technician Profiles', icon: UserRound }, { id: 'roles', label: 'Roles & Permissions', icon: ShieldCheck },
     { id: 'audit', label: 'Audit Log', icon: Database }, { id: 'settings', label: 'Settings', icon: Settings }
   ]}
 ];
@@ -61,11 +68,11 @@ function App() {
       <div className="brand"><div className="brand-mark"><span>V</span></div><div className="brand-copy"><strong>valor</strong><small>Lift Services</small></div><button className="mobile-close" aria-label="Close navigation" onClick={() => setMobileNav(false)}><X size={18}/></button></div>
       <div className="workspace-switcher"><div className="workspace-avatar">VO</div><div><b>Valor Operations</b><span>Admin workspace</span></div><ChevronDown size={15}/></div>
       <nav className="nav">{navGroups.map(group => <div className="nav-group" key={group.label}><span className="nav-label">{group.label}</span>{group.items.map(({id,label,icon:Icon}) => <button key={id} title={migrated.has(id) ? label : `${label} ? migration deferred`} className={`nav-item ${active === id ? 'active' : ''}`} onClick={() => { setActive(id); setMobileNav(false); }}><Icon size={17}/><span>{label}{!migrated.has(id) && <small className="deferred-tag">Deferred</small>}</span></button>)}</div>)}</nav>
-      <div className="sidebar-bottom"><button className="collapse-btn" onClick={() => setSidebarOpen(!sidebarOpen)}>{sidebarOpen ? <PanelLeftClose size={17}/> : <PanelLeftOpen size={17}/>}<span>{sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}</span></button></div>
+      <div className="sidebar-bottom"><div className="sidebar-user-card"><div className="workspace-avatar">{(user.email || 'AD').slice(0,2).toUpperCase()}</div><div><b>{user.email || 'Administrator'}</b><span>{user.role === 'SUPER_ADMIN' ? 'Super admin' : 'Admin'}</span></div></div><button className="collapse-btn" aria-label={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'} onClick={() => setSidebarOpen(!sidebarOpen)}>{sidebarOpen ? <PanelLeftClose size={17}/> : <PanelLeftOpen size={17}/>}<span>{sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}</span></button></div>
     </aside>
     {mobileNav && <div className="mobile-scrim" onClick={() => setMobileNav(false)}/>}
-    <main className="main"><header className="topbar"><button className="mobile-menu" aria-label="Open navigation" onClick={() => setMobileNav(true)}><Menu size={20}/></button><div className="breadcrumbs"><span>Valor Operations</span><ChevronRight size={14}/><b>{activeLabel}</b></div><div className="topbar-actions"><div className="user-copy"><b>{user.email || 'Administrator'}</b><span>{user.role === 'SUPER_ADMIN' ? 'Super admin' : 'Admin'}</span></div><button className="secondary-btn" disabled={loggingOut} onClick={logout}><LogOut size={15}/>{loggingOut ? 'Signing out...' : 'Log out'}</button></div></header>
-      <div className="content">{active === 'dashboard' ? <Dashboard/> : active === 'schedule' ? <ScheduleCalendarPage api={visitServices} requests={workflowServices} directories={workflowServices} notify={message => setNotice(message)}/> : active === 'technicians' ? <TechnicianAssignmentsPage api={workflowServices} user={user}/> : ['buildings','lifts','amc'].includes(active) ? <AssetPage key={active} kind={active} api={assetServices[active]} assets={assetServices} directories={workflowServices} user={user}/> : active === 'payments' ? <PaymentsPage api={paymentServices} user={user}/> : active === 'customers' ? <CustomersPage api={customerServices} user={user}/> : active === 'emergency' ? <EmergencyQueuePage api={workflowServices} user={user}/> : active === 'service-requests' ? <WorkflowPage api={workflowServices} assets={assetServices} visits={visitServices} user={user}/> : active === 'notifications' ? <NotificationsPage api={notificationServices} directories={workflowServices} user={user}/> : active === 'admin-users' ? <StaffPage api={assetServices.staff} user={user}/> : active === 'settings' ? <SettingsPage api={settingsServices} user={user}/> : <section className="panel empty-state"><h1>{activeLabel}</h1><p>This module is deferred until its API migration. No data or actions are connected.</p><button className="secondary-btn" onClick={() => setActive('dashboard')}>Back to dashboard</button></section>}</div>
+    <main className="main"><header className="topbar"><button className="mobile-menu" aria-label="Open navigation" onClick={() => setMobileNav(true)}><Menu size={20}/></button><div className="breadcrumbs"><span>Valor Operations</span><ChevronRight size={14}/><b>{activeLabel}</b></div><div className="topbar-title"><span>Workspace</span><strong>{activeLabel}</strong></div><div className="topbar-actions"><button className="icon-btn" aria-label="Open notifications" title="Notifications" onClick={() => setActive('notifications')}><Bell size={17}/></button><div className="user-copy"><b>{user.email || 'Administrator'}</b><span>{user.role === 'SUPER_ADMIN' ? 'Super admin' : 'Admin'}</span></div><button className="secondary-btn" disabled={loggingOut} onClick={logout}><LogOut size={15}/>{loggingOut ? 'Signing out...' : 'Log out'}</button></div></header>
+      <div className="content">{active === 'dashboard' ? <Dashboard/> : active === 'schedule' ? <ScheduleCalendarPage api={visitServices} requests={workflowServices} directories={workflowServices} notify={message => setNotice(message)}/> : active === 'technicians' ? <TechnicianAssignmentsPage api={workflowServices} user={user}/> : active === 'checklists' ? <ChecklistTemplatesPage api={phase15Services}/> : active === 'technician-profiles' ? <TechnicianProfileAdminPage api={phase15Services}/> : ['buildings','lifts','amc'].includes(active) ? <AssetPage key={active} kind={active} api={assetServices[active]} assets={assetServices} directories={workflowServices} user={user}/> : active === 'payments' ? <PaymentsPage api={paymentServices} user={user}/> : active === 'transactions' ? <TransactionsPage api={financeServices} user={user}/> : active === 'reports' ? <ReportsPage api={financeServices} user={user}/> : active === 'exports' ? <ReportsPage api={financeServices} user={user} initialType="payments"/> : active === 'roles' ? <RolesPage api={adminSecurityServices} user={user}/> : active === 'audit' ? <AuditLogPage api={adminSecurityServices} user={user}/> : active === 'customers' ? <CustomersPage api={customerServices} user={user}/> : active === 'emergency' ? <EmergencyQueuePage api={workflowServices} user={user}/> : active === 'service-requests' ? <WorkflowPage api={workflowServices} assets={assetServices} visits={visitServices} user={user}/> : active === 'notifications' ? <NotificationsPage api={notificationServices} directories={workflowServices} user={user}/> : active === 'communications' ? <CommunicationsPage api={communicationServices}/> : active === 'admin-users' ? <StaffPage api={assetServices.staff} user={user}/> : active === 'settings' ? <SettingsPage api={settingsServices} user={user}/> : <section className="panel empty-state"><h1>{activeLabel}</h1><p>This module is deferred until its API migration. No data or actions are connected.</p><button className="secondary-btn" onClick={() => setActive('dashboard')}>Back to dashboard</button></section>}</div>
     </main>
   </div></ProtectedContent>;
 }
@@ -95,16 +102,84 @@ function LoginScreen({ onLogin, notice }) {
     catch (err) { setError(err instanceof TypeError ? 'Valor backend is unavailable. Please try again shortly.' : (err.message || 'Unable to sign in.')); }
     finally { setLoading(false); setPassword(''); }
   };
-  return <div style={{minHeight:'100vh',display:'grid',placeItems:'center',background:'linear-gradient(135deg,#f5f7fa,#eef3fa)',padding:20}}>
-    <form onSubmit={submitPassword} style={{width:'100%',maxWidth:410,background:'#fff',border:'1px solid #e5eaf0',borderRadius:16,padding:'34px 32px',boxShadow:'0 18px 50px rgba(18,43,61,.1)'}}>
-      <div className="brand" style={{padding:0,height:'auto',marginBottom:30}}><div className="brand-mark"><span>V</span></div><div className="brand-copy"><strong style={{color:'#172536'}}>valor</strong><small>Lift Services</small></div></div>
-      <div className="eyebrow">SECURE ADMIN ACCESS</div><h1 style={{fontSize:25,margin:'0 0 8px',color:'#172536'}}>Welcome back</h1><p style={{fontSize:12,color:'#7a8896',margin:'0 0 25px'}}>Sign in to manage service operations, assets and teams.</p>
-      <label style={{display:'block',fontSize:11,color:'#526677',fontWeight:600,marginBottom:15}}>Work email<input value={email} onChange={(e)=>setEmail(e.target.value)} autoComplete="username" type="email" required style={{display:'block',width:'100%',height:42,border:'1px solid #dfe6ec',borderRadius:7,marginTop:7,padding:'0 11px',outline:0,fontSize:12}} /></label>
-      <label style={{display:'block',fontSize:11,color:'#526677',fontWeight:600,marginBottom:18}}>Password<input value={password} onChange={(e)=>setPassword(e.target.value)} autoComplete="current-password" type="password" required style={{display:'block',width:'100%',height:42,border:'1px solid #dfe6ec',borderRadius:7,marginTop:7,padding:'0 11px',outline:0,fontSize:12}} /></label>
-      {(error || notice) && <div role="alert" style={{background:'#fff0f0',color:'#c65555',fontSize:11,padding:'10px 12px',borderRadius:7,marginBottom:15}}>{error || notice}</div>}
-      <button type="submit" disabled={loading} className="primary-btn" style={{width:'100%',height:42}}>{loading ? 'Please wait...' : 'Sign in'}</button>
-      <p style={{fontSize:10,color:'#98a4ae',textAlign:'center',margin:'18px 0 0'}}>Password authentication protects your operations workspace.</p>
-    </form>
+  return <div className="login-page">
+    <header className="login-header">
+      <div className="login-brand" aria-label="Valor Lift Services">
+        <div className="login-brand-mark" aria-hidden="true"><span>V</span></div>
+        <div className="login-brand-copy"><strong>valor</strong><small>Lift Services</small></div>
+      </div>
+      <span className="login-portal-label"><ShieldCheck size={16} aria-hidden="true"/> Admin portal</span>
+    </header>
+
+    <main className="login-shell">
+      <aside className="login-story" aria-label="Valor operations workspace">
+        <div className="login-story-copy">
+          <span className="login-kicker"><span aria-hidden="true"/> VALOR OPERATIONS</span>
+          <h2>Elevating service.<br/><span>Every day.</span></h2>
+          <p>Your people, your assets, your operations.<br className="login-desktop-break"/> One connected workspace.</p>
+        </div>
+
+        <div className="login-illustration" aria-hidden="true">
+          <div className="login-lift-halo"/>
+          <div className="login-floor-line login-floor-line-top"/>
+          <div className="login-floor-line login-floor-line-bottom"/>
+          <div className="login-lift">
+            <div className="login-lift-indicator"><span>↑</span> V</div>
+            <div className="login-lift-frame">
+              <div className="login-lift-doors"><span/><span/></div>
+            </div>
+            <div className="login-lift-controls"><span>⌃</span><span>⌄</span></div>
+          </div>
+          <div className="login-illustration-label"><Layers3 size={15}/> Built around your operations</div>
+        </div>
+
+        <div className="login-story-footer">
+          <span><Building2 size={16} aria-hidden="true"/> Assets</span>
+          <span><Wrench size={16} aria-hidden="true"/> Service</span>
+          <span><Users size={16} aria-hidden="true"/> Teams</span>
+        </div>
+      </aside>
+
+      <section className="login-form-panel" aria-labelledby="login-title">
+        <div className="login-form-content">
+          <div className="login-access-icon" aria-hidden="true"><LockKeyhole size={24} strokeWidth={1.7}/></div>
+          <div className="login-form-heading">
+            <p className="login-form-eyebrow">SECURE ADMIN ACCESS</p>
+            <h1 id="login-title">Welcome back</h1>
+            <p id="login-description">Sign in to manage service operations, assets and teams.</p>
+          </div>
+
+          <form onSubmit={submitPassword} className="login-form" aria-describedby="login-description" aria-busy={loading}>
+            <div className="login-field">
+              <label htmlFor="login-email">Work email</label>
+              <div className="login-input-wrap">
+                <Mail size={19} aria-hidden="true"/>
+                <input id="login-email" value={email} onChange={(e)=>setEmail(e.target.value)} autoComplete="username" type="email" required placeholder="you@company.com" />
+              </div>
+            </div>
+            <div className="login-field">
+              <label htmlFor="login-password">Password</label>
+              <div className="login-input-wrap">
+                <LockKeyhole size={19} aria-hidden="true"/>
+                <input id="login-password" value={password} onChange={(e)=>setPassword(e.target.value)} autoComplete="current-password" type="password" required placeholder="Enter your password" />
+              </div>
+            </div>
+            {(error || notice) && <div role="alert" className={`login-message ${error ? 'login-message-error' : 'login-message-notice'}`}>
+              <Info size={18} aria-hidden="true"/><span>{error || notice}</span>
+            </div>}
+            <button type="submit" disabled={loading} className="login-submit">
+              {loading && <LoaderCircle size={19} className="login-spinner" aria-hidden="true"/>}
+              <span>{loading ? 'Please wait...' : 'Sign in'}</span>
+              {!loading && <ArrowRight size={19} aria-hidden="true"/>}
+            </button>
+            <p className="login-security-note"><ShieldCheck size={16} aria-hidden="true"/><span>Password authentication protects your operations workspace.</span></p>
+          </form>
+          <div className="login-access-note"><span>Administrator access only</span><p>Use your assigned Valor account to continue.</p></div>
+        </div>
+      </section>
+    </main>
+
+    <footer className="login-footer"><span>Valor Lift Services</span><span>Keeping your operations moving.</span></footer>
   </div>;
 }
 createRoot(document.getElementById('root')).render(<App/>);

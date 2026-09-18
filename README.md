@@ -16,11 +16,13 @@ src/
   main.jsx                 Application shell, routing, dashboard, login
   api/client.js            Authenticated canonical /api/v1 API client and session storage
   api/services.js          Auth, dashboard health, and summary methods
-  api/*.js                 Customer, asset, workflow, visit, notification, and settings services
+  api/*.js                 Customer, asset, workflow, visit, notification, finance, and security services
   customerModules.jsx      Customer management
   workflowModules.jsx      Service requests and emergency queue
   scheduleCalendar.jsx     Service Visit calendar and change-request handling
   technicianAssignments.jsx Technician assignment/reassignment
+  financeModules.jsx       Transactions, reports, and CSV exports
+  adminSecurityModules.jsx Roles/permissions and audit log views
   settingsModule.jsx       Persisted Admin settings
   *.css                    Responsive page and component styles
 ```
@@ -93,7 +95,8 @@ is your private local value in `D:\RKKKK\Valor-Backend\.env`.
 
 Customers, Buildings, Lifts, AMC Contracts, Service Requests, Emergency Queue,
 Schedule/Service Visits, Technician Assignments, Notifications, Staff
-provisioning, Settings, and Payments use canonical `/api/v1` backend services.
+provisioning, Settings, Payments, Transactions, Reports, Exports, Roles and
+Permissions, and Audit Log use canonical `/api/v1` backend services.
 
 Customer creation sends the backend-supported identity and profile fields:
 email or phone, temporary password, full name, alternate phone, company name,
@@ -104,10 +107,10 @@ AMC, or Premium AMC plan dropdown, defaults the start date to today, defaults
 the end date to a 12-month term, and displays the backend-generated contract
 number after save.
 
-Invoices, Inventory, Inventory Transactions, Reports, Exports, Roles and
-Permissions, and Audit Log remain deferred and are not connected to active
-runtime APIs. The Payments module is preserved from Phase 1B.1 and remains
-active.
+Invoices and Inventory remain deferred and are not connected to active runtime
+APIs. The Payments module is preserved from Phase 1B.1 and remains active.
+Transactions, Reports, Exports, Roles and Permissions, and Audit Log are active
+Admin-only modules backed by canonical backend APIs.
 
 ### Settings
 
@@ -186,6 +189,10 @@ Key active groups:
 - `/api/v1/notifications`
 - `/api/v1/payments`, `/api/v1/payments/{id}/refunds`
 - `/api/v1/admin/payments/reconciliation`
+- `/api/v1/admin/transactions`, `/api/v1/admin/transactions.csv`
+- `/api/v1/admin/reports/{type}`, `/api/v1/admin/reports/{type}.csv`
+- `/api/v1/admin/permissions`, `/api/v1/admin/roles`
+- `/api/v1/admin/audit-logs`
 
 ## Phase 1B payments
 
@@ -194,6 +201,35 @@ backend payment records, shows invoice and Razorpay identifiers, requests full o
 partial refunds, reloads refund status from the backend, and displays basic
 reconciliation issues. Refunds remain backend/gateway authoritative; the UI does
 not mark a payment refunded just because an admin clicked the refund action.
+
+## Phase 13A transactions and reports
+
+The active Transactions module lists backend-derived payment and refund movement
+from `/api/v1/admin/transactions`. It supports search, status, type, customer,
+date, pagination, refresh, detail view, and CSV export. The UI displays existing
+invoice, payment, refund, customer, service request, AMC and gateway reference
+fields where the backend provides them; it does not hardcode transaction rows or
+create a separate ledger.
+
+The Reports/Exports module calls `/api/v1/admin/reports/{type}` for revenue,
+payments, invoices, services, customers, and technicians. The same filter set is
+used for CSV exports through `/api/v1/admin/reports/{type}.csv`. CSV is the only
+implemented Phase 13A export format. Excel and PDF report exports remain
+deferred.
+
+## Phase 13B roles, permissions, and audit log
+
+The active Roles & Permissions module lists backend roles and permissions from
+`/api/v1/admin/roles` and `/api/v1/admin/permissions`. SUPER_ADMIN users can
+replace the permission set for editable non-SUPER_ADMIN roles through
+`/api/v1/admin/roles/{name}/permissions`; unauthorized users see the backend
+403 state and the UI disables unsupported save actions.
+
+The active Audit Log module reads `/api/v1/admin/audit-logs` with filters for
+action, entity type, role, and date range. It shows timestamp, actor, role,
+action, entity, result, and safe summaries only. The portal does not expose an
+audit update/delete workflow and rejects unsafe audit payloads containing
+secret-like fields.
 
 Live browser workflow verification against a signed-in admin account was not
 completed in this checkpoint because no browser surface was available to the
@@ -234,3 +270,35 @@ mvn test
 ```
 
 Both commands should complete successfully before pushing or deploying.
+
+## Phase 15 technician advanced operations
+
+The Admin Portal includes the minimum Phase 15 management UI without changing
+API behavior:
+
+- Checklist Templates lists backend checklist templates, creates/updates template
+  metadata, manages service-type applicability, and adds/removes checklist
+  items through `/api/v1/admin/checklist-templates`.
+- Technician Profiles opens expanded technician profile records by id, edits the
+  permitted profile fields exposed by the backend, and lists/opens/deletes
+  technician-private attachments where the signed-in admin is authorized.
+
+The portal does not expose customer access to technician-private files and does
+not create fake checklist, profile, or attachment data.
+
+## Phase 16 advanced live tracking
+
+No new Admin tracking dashboard was added in Phase 16. The product scope kept
+advanced tracking customer/technician focused and avoided creating a fleet
+management surface. Existing Admin service request workflows continue to use the
+current API behavior.
+
+## Phase 17 communication foundation
+
+The Admin Portal exposes a minimal Communication Messages page backed by real
+`/api/v1/admin/communications` data. Admin users can filter by delivery status,
+see masked recipients, channel, provider, retry/failure information, and process
+pending or failed messages through the backend provider abstraction.
+
+The portal does not create fake delivery records, fake analytics, or activate
+Email/SMS/WhatsApp providers.

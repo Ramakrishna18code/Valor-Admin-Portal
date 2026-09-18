@@ -28,3 +28,15 @@ export const settingsServices = createSettingsServices(client);
 
 import { createPaymentServices } from './payments.js';
 export const paymentServices = createPaymentServices(client);
+
+import { createFinanceServices } from './finance.js';
+export const financeServices = createFinanceServices(client);
+
+import { createAdminSecurityServices } from './adminSecurity.js';
+export const adminSecurityServices = createAdminSecurityServices(client);
+
+import { createPhase15Services } from './phase15.js';
+export const phase15Services = createPhase15Services(client);
+
+import { createCommunicationServices } from './communications.js';
+export const communicationServices = createCommunicationServices(client);

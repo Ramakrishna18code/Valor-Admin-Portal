@@ -1,0 +1,12 @@
+import React,{useEffect,useState}from'react';
+import {communicationStatuses}from'./api/communications.js';
+import {Pager}from'./workflowModules.jsx';
+import {displayValue,ErrorState}from'./assetModules.jsx';
+
+export function CommunicationsPage({api}){
+ const[status,setStatus]=useState(''),[page,setPage]=useState(0),[data,setData]=useState(null),[error,setError]=useState(null),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[revision,setRevision]=useState(0);
+ useEffect(()=>{let active=true;setLoading(true);setError(null);api.messages({page,size:20,status}).then(v=>{if(active)setData(v);}).catch(e=>{if(active)setError(e);}).finally(()=>{if(active)setLoading(false);});return()=>{active=false};},[api,page,status,revision]);
+ const process=async row=>{setBusy(true);setError(null);try{await api.process(row.id);setRevision(v=>v+1);}catch(e){setError(e);}finally{setBusy(false);}};
+ return <><div className="page-header"><div><div className="eyebrow">COMMUNICATION</div><h1>Communication messages</h1><p>Provider-independent delivery records. Recipient values are masked by the backend.</p></div><button className="secondary-btn" disabled={loading||busy} onClick={()=>setRevision(v=>v+1)}>Refresh</button></div>
+ <section className="asset-form panel"><label>Status<select value={status} disabled={loading||busy} onChange={e=>{setData(null);setPage(0);setStatus(e.target.value);}}><option value="">All</option>{communicationStatuses.map(s=><option key={s}>{s}</option>)}</select></label><ErrorState error={error}/>{loading?<p role="status">Loading communication messages...</p>:data?.items.length===0?<p>No communication messages found.</p>:<div className="asset-table"><table><thead><tr>{['Event','Recipient','Channel','Status','Provider','Retry','Failure','Created','Action'].map(h=><th key={h}>{h}</th>)}</tr></thead><tbody>{data.items.map(row=><tr key={row.id}><td>{row.eventType}</td><td>{displayValue(row.recipientMasked)}</td><td>{row.channel}</td><td>{row.status}</td><td>{displayValue(row.provider)}</td><td>{row.retryCount}/{row.maxRetryCount}</td><td>{displayValue(row.failureReason)}</td><td>{displayValue(row.createdAt)}</td><td>{['PENDING','FAILED'].includes(row.status)&&<button className="secondary-btn" disabled={busy} onClick={()=>process(row)}>Process</button>}</td></tr>)}</tbody></table></div>}<Pager data={data} page={page} busy={loading||busy} onPage={p=>{setData(null);setPage(p);}}/></section></>;
+}
