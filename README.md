@@ -302,3 +302,18 @@ pending or failed messages through the backend provider abstraction.
 
 The portal does not create fake delivery records, fake analytics, or activate
 Email/SMS/WhatsApp providers.
+## Phase 18 Email System Notes
+
+Email delivery is backend-driven through the Phase 17 communication APIs. The Admin Portal should use real `/api/v1/admin/communications/**` message visibility data when showing communication history; it must not invent fake email history or expose provider credentials.
+
+Real email provider activation is deferred. Local/dev environments use the backend mock email provider, generic `EMAIL_*` placeholders, and the safe `/api/v1/auth/set-password` onboarding flow. Admin-created users may receive set-password links, but raw passwords must never be displayed as email content.
+
+## Phases 19-21 Communication Notes
+
+SMS/OTP, WhatsApp, and communication preferences are backend-authoritative. The Admin Portal should read and update real `/api/v1/admin/communications/preferences/{userId}` fields for channel and category preferences, and use `/api/v1/admin/communications/messages` for delivery visibility.
+
+## Phase 22 communication automation
+
+Communication event automation is backend-driven. The Admin Portal should continue to use the existing `/api/v1/admin/communications/**` endpoints for delivery visibility and preferences. Service alerts, report-ready messages, assignment notices, and payment/report communication records are created by backend business events; the portal must not create fake delivery history or expose provider credentials.
+
+Do not expose MSG91 auth keys, WhatsApp API keys, OTP values, provider payloads, or fake delivery history in the UI. External providers remain mock/deferred.

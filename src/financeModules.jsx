@@ -3,6 +3,7 @@ import { Download, RefreshCw } from 'lucide-react';
 import { ErrorState } from './assetModules.jsx';
 import { isAdmin } from './api/services.js';
 import { reportTypes } from './api/finance.js';
+import { PagerButtons } from './uiPatterns.jsx';
 
 const money = row => `${row.currency || 'INR'} ${Number(row.amount || 0).toFixed(2)}`;
 const when = value => value ? new Date(value).toLocaleString() : 'None';
@@ -19,9 +20,9 @@ async function saveResponse(response, filename) {
 }
 
 export function TransactionsPage({api, user}) {
-  const [filters, setFilters] = useState({page:0, size:20, sort:'createdAt,desc', q:'', type:'', status:''});
+  const [filters, setFilters] = useState({page:0, size:10, sort:'createdAt,desc', q:'', type:'', status:''});
   const [data, setData] = useState(null), [selected, setSelected] = useState(null), [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null), [notice, setNotice] = useState(''), [revision, setRevision] = useState(0);
+  const [error, setError] = useState(null), [notice, setNotice] = useState(''), [revision, setRevision] = useState(0), [csvOpen, setCsvOpen] = useState(false), [csvRange, setCsvRange] = useState({dateFrom:'', dateTo:''});
   const allowed = isAdmin(user);
   useEffect(() => {
     if (!allowed) return;
@@ -35,23 +36,22 @@ export function TransactionsPage({api, user}) {
   const update = patch => setFilters(current => ({...current, ...patch, page:0}));
   const exportCsv = async () => {
     setError(null); setNotice('');
-    try { await saveResponse(await api.transactionExport(filters), 'transactions.csv'); setNotice('Transaction export downloaded.'); }
+    try { await saveResponse(await api.transactionExport({...filters, ...csvRange}), 'transactions.csv'); setNotice('Transaction export downloaded.'); setCsvOpen(false); }
     catch (value) { setError(value); }
   };
-  return <><div className="page-header"><div><div className="eyebrow">FINANCE</div><h1>Transactions</h1><p>Payment and refund movement from backend-authoritative payment records.</p></div><div className="page-actions"><button className="secondary-btn" disabled={loading} onClick={exportCsv}><Download size={15}/>CSV</button><button className="secondary-btn" disabled={loading} onClick={() => setRevision(value => value + 1)}><RefreshCw size={15}/>Refresh</button></div></div>
-    <ErrorState error={error}/>{notice && <p role="status">{notice}</p>}
+  if (selected) return <><div className="page-header"><div><div className="eyebrow">FINANCE</div><h1>Transaction Details</h1></div><button className="secondary-btn" onClick={()=>setSelected(null)}>Back to transactions</button></div><section className="module-detail-dialog" style={{position:'static',width:'100%',maxHeight:'none',boxShadow:'none'}}><div className="module-detail-head"><div><span className="eyebrow">{selected.type}</span><h2>{selected.id}</h2></div><Badge value={selected.status}/></div><div className="module-detail-grid">
+        <Detail label="Amount" value={money(selected)}/><Detail label="Customer profile" value={selected.customerProfileId}/><Detail label="Invoice" value={selected.invoiceNumber || selected.invoiceId}/><Detail label="Payment" value={selected.paymentId}/><Detail label="Refund" value={selected.refundId}/><Detail label="Service request" value={selected.serviceRequestId}/><Detail label="AMC contract" value={selected.amcContractId}/><Detail label="Purpose" value={selected.purpose}/><Detail label="Razorpay order" value={selected.razorpayOrderId}/><Detail label="Razorpay payment" value={selected.razorpayPaymentId}/><Detail label="Razorpay refund" value={selected.razorpayRefundId}/><Detail label="Gateway status" value={selected.gatewayStatus}/><Detail label="Created" value={when(selected.createdAt)}/><Detail label="Updated" value={when(selected.updatedAt)}/></div></section></>;
+  return <><div className="page-header"><div><div className="eyebrow">FINANCE</div><h1>Transactions</h1><p>Payment and refund movement from backend-authoritative payment records.</p></div><div className="page-actions"><button className="secondary-btn" disabled={loading} onClick={()=>setCsvOpen(true)}><Download size={15}/>CSV</button><button className="secondary-btn" disabled={loading} onClick={() => setRevision(value => value + 1)}><RefreshCw size={15}/>Refresh</button></div></div>
+    <ErrorState error={error}/>{notice && <p role="status">{notice}</p>}{csvOpen && <div className="drawer-scrim" onClick={()=>setCsvOpen(false)}><form className="drawer csv-dialog" onSubmit={e=>{e.preventDefault();exportCsv();}} onClick={e=>e.stopPropagation()}><h2>Download transactions CSV</h2><p className="drawer-description">Choose a date range for the export.</p><label>From<input type="date" value={csvRange.dateFrom} onChange={e=>setCsvRange(v=>({...v,dateFrom:e.target.value}))}/></label><label>To<input type="date" value={csvRange.dateTo} onChange={e=>setCsvRange(v=>({...v,dateTo:e.target.value}))}/></label><div className="drawer-footer"><button type="button" className="secondary-btn" onClick={()=>setCsvOpen(false)}>Cancel</button><button className="primary-btn">Download CSV</button></div></form></div>}
     <section className="panel table-panel"><div className="filter-bar"><div className="search-box"><input placeholder="Search invoice or gateway id" value={filters.q} onChange={event => update({q:event.target.value})}/></div>
       <select className="filter-btn" value={filters.type} onChange={event => update({type:event.target.value})}><option value="">All types</option><option>PAYMENT</option><option>REFUND</option></select>
       <select className="filter-btn" value={filters.status} onChange={event => update({status:event.target.value})}><option value="">All statuses</option>{['PENDING','PROCESSING','SUCCEEDED','FAILED','CANCELLED','REFUNDED','PARTIALLY_REFUNDED','REQUESTED'].map(value => <option key={value}>{value}</option>)}</select>
       <input className="filter-btn" type="date" value={filters.dateFrom || ''} onChange={event => update({dateFrom:event.target.value})}/><input className="filter-btn" type="date" value={filters.dateTo || ''} onChange={event => update({dateTo:event.target.value})}/></div>
       {loading ? <div className="empty-state" role="status">Loading transactions...</div> : <div className="payments-table"><div className="table-head"><span>ID</span><span>Relationship</span><span>Amount</span><span>Status</span><span>Gateway</span><span></span></div>
         {(data?.items || []).map(row => <button key={row.id} className="table-row" style={{width:'100%',textAlign:'left'}} onClick={() => setSelected(row)}><span className="strong">{row.id}</span><span>{row.invoiceNumber || (row.invoiceId ? `Invoice ${row.invoiceId}` : `Customer ${row.customerProfileId}`)}</span><span>{money(row)}</span><Badge value={row.status}/><span>{row.razorpayRefundId || row.razorpayPaymentId || row.razorpayOrderId || row.gatewayStatus || 'Internal'}</span><span>Open</span></button>)}
-        {data?.items?.length ? null : <div className="empty-state"><b>No transactions</b><span>No matching payment or refund records were returned.</span></div>}</div>}
+        {data?.items?.length ? null : <div className="empty-state"><b>No transactions</b><span>No matching payment or refund records were returned.</span></div>}</div>}<PagerButtons page={filters.page} totalPages={data?.totalPages} totalItems={data?.totalElements} onPage={page=>setFilters(v=>({...v,page}))} busy={loading}/>
     </section>
-    <section className="module-detail-dialog" style={{position:'static',width:'100%',maxHeight:'none',boxShadow:'none',marginTop:16}}>
-      {selected ? <><div className="module-detail-head"><div><span className="eyebrow">{selected.type}</span><h2>{selected.id}</h2></div><Badge value={selected.status}/></div><div className="module-detail-grid">
-        <Detail label="Amount" value={money(selected)}/><Detail label="Customer profile" value={selected.customerProfileId}/><Detail label="Invoice" value={selected.invoiceNumber || selected.invoiceId}/><Detail label="Payment" value={selected.paymentId}/><Detail label="Refund" value={selected.refundId}/><Detail label="Service request" value={selected.serviceRequestId}/><Detail label="AMC contract" value={selected.amcContractId}/><Detail label="Purpose" value={selected.purpose}/><Detail label="Razorpay order" value={selected.razorpayOrderId}/><Detail label="Razorpay payment" value={selected.razorpayPaymentId}/><Detail label="Razorpay refund" value={selected.razorpayRefundId}/><Detail label="Gateway status" value={selected.gatewayStatus}/><Detail label="Created" value={when(selected.createdAt)}/><Detail label="Updated" value={when(selected.updatedAt)}/></div></> : <div className="empty-state"><b>Select a transaction</b><span>Open a transaction to inspect its payment, refund and invoice relationship.</span></div>}
-    </section></>;
+    </>;
 }
 
 export function ReportsPage({api, user, initialType = 'revenue'}) {

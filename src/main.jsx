@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Home, ClipboardList, AlertTriangle, CalendarDays, Wrench, Users, Building2, Layers3, ShieldCheck, CreditCard, ReceiptText, Package, RefreshCw, Bell, BarChart3, Download, UserRound, Database, Settings, ChevronDown, ChevronRight, Menu, X, LogOut, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { Home, ClipboardList, AlertTriangle, CalendarDays, Wrench, Users, Building2, Layers3, ShieldCheck, CreditCard, ReceiptText, Package, RefreshCw, Bell, BarChart3, Download, UserRound, Database, Settings, ChevronDown, ChevronRight, Menu, X, LogOut, PanelLeftClose } from 'lucide-react';
 import './styles.css';
 import './migration.css';
 import './login.css';
@@ -21,9 +21,9 @@ import { RolesPage, AuditLogPage } from './adminSecurityModules.jsx';
 import { ChecklistTemplatesPage, TechnicianProfileAdminPage } from './phase15Modules.jsx';
 import { CommunicationsPage } from './communicationModules.jsx';
 import './valorDesign.css';
-const migrated = new Set(['dashboard','buildings','lifts','amc','admin-users','service-requests','notifications','communications','schedule','customers','emergency','technicians','settings','payments','transactions','reports','exports','roles','audit','checklists','technician-profiles']);
+const migrated = new Set(['dashboard','buildings','lifts','amc','service-requests','notifications','communications','schedule','customers','emergency','technicians','settings','payments','transactions','reports','exports','roles','audit','checklists','technician-profiles']);
+const dashboardNav = { id: 'dashboard', label: 'Dashboard', icon: Home };
 const navGroups = [
-  { label: 'MAIN', items: [{ id: 'dashboard', label: 'Dashboard', icon: Home }] },
   { label: 'OPERATIONS', items: [
     { id: 'service-requests', label: 'Service Requests', icon: ClipboardList }, { id: 'checklists', label: 'Checklists', icon: ClipboardList }, { id: 'emergency', label: 'Emergency Queue', icon: AlertTriangle },
     { id: 'schedule', label: 'Schedule', icon: CalendarDays }, { id: 'technicians', label: 'Technician Assignments', icon: Wrench }
@@ -37,17 +37,36 @@ const navGroups = [
   { label: 'COMMUNICATION', items: [{ id: 'notifications', label: 'Notifications', icon: Bell }, { id: 'communications', label: 'Communications', icon: Bell }] },
   { label: 'ANALYTICS', items: [{ id: 'reports', label: 'Reports', icon: BarChart3 }, { id: 'exports', label: 'Exports', icon: Download }] },
   { label: 'ADMINISTRATION', items: [
-    { id: 'admin-users', label: 'Staff provisioning', icon: UserRound }, { id: 'technician-profiles', label: 'Technician Profiles', icon: UserRound }, { id: 'roles', label: 'Roles & Permissions', icon: ShieldCheck },
+    { id: 'technician-profiles', label: 'Technician Profiles', icon: UserRound }, { id: 'roles', label: 'Roles & Permissions', icon: ShieldCheck },
     { id: 'audit', label: 'Audit Log', icon: Database }, { id: 'settings', label: 'Settings', icon: Settings }
   ]}
 ];
+const navItems = [dashboardNav, ...navGroups.flatMap(group => group.items)];
+const moduleParents = {
+  'service-requests': 'Operations', checklists: 'Operations', emergency: 'Operations', schedule: 'Operations', technicians: 'Operations',
+  customers: 'Assets', buildings: 'Assets', lifts: 'Assets', amc: 'Assets',
+  payments: 'Finance', invoices: 'Finance',
+  inventory: 'Inventory', transactions: 'Inventory',
+  notifications: 'Communication', communications: 'Communication',
+  reports: 'Analytics', exports: 'Analytics',
+  'technician-profiles': 'Administration', roles: 'Administration', audit: 'Administration', settings: 'Administration'
+};
+function breadcrumbFor(active, activeLabel) {
+  const crumbs = [{ label: 'Valor Operations', id: 'dashboard' }];
+  if (active === 'dashboard') return crumbs;
+  const parent = moduleParents[active];
+  if (parent) crumbs.push({ label: parent });
+  crumbs.push({ label: activeLabel, id: active, current: true });
+  return crumbs;
+}
 
 
 function App() {
   const [user, setUser] = useState(null), [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState(''), [active, setActive] = useState('dashboard');
-  const [sidebarOpen, setSidebarOpen] = useState(true), [mobileNav, setMobileNav] = useState(false);
-  const [loggingOut, setLoggingOut] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false), [sidebarHover, setSidebarHover] = useState(false), [mobileNav, setMobileNav] = useState(false);
+  const [expandedGroups, setExpandedGroups] = useState(() => new Set());
+  const [loggingOut, setLoggingOut] = useState(false), [logoutConfirm, setLogoutConfirm] = useState(false);
   useEffect(() => {
     let current = true;
     const unsubscribe = session.subscribe(() => { if (current) { setUser(null); setNotice("Your session ended. Please sign in again."); } });
@@ -62,18 +81,39 @@ function App() {
   };
   if (routeState(loading, user) === 'loading') return <div className="session-loading" role="status">Checking your session...</div>;
   if (routeState(false, user) === 'login') return <LoginScreen notice={notice} onLogin={value => { setUser(value); setNotice(''); setActive('dashboard'); }} />;
-  const activeLabel = navGroups.flatMap(group => group.items).find(item => item.id === active)?.label || 'Dashboard';
-  return <ProtectedContent user={user}><div className={`app ${sidebarOpen ? '' : 'sidebar-collapsed'}`}>
-    <aside className={`sidebar ${mobileNav ? 'mobile-open' : ''}`}>
-      <div className="brand"><div className="brand-mark"><span>V</span></div><div className="brand-copy"><strong>valor</strong><small>Lift Services</small></div><button className="mobile-close" aria-label="Close navigation" onClick={() => setMobileNav(false)}><X size={18}/></button></div>
-      <div className="workspace-switcher"><div className="workspace-avatar">VO</div><div><b>Valor Operations</b><span>Admin workspace</span></div><ChevronDown size={15}/></div>
-      <nav className="nav">{navGroups.map(group => <div className="nav-group" key={group.label}><span className="nav-label">{group.label}</span>{group.items.map(({id,label,icon:Icon}) => <button key={id} title={migrated.has(id) ? label : `${label} ? migration deferred`} className={`nav-item ${active === id ? 'active' : ''}`} onClick={() => { setActive(id); setMobileNav(false); }}><Icon size={17}/><span>{label}{!migrated.has(id) && <small className="deferred-tag">Deferred</small>}</span></button>)}</div>)}</nav>
-      <div className="sidebar-bottom"><div className="sidebar-user-card"><div className="workspace-avatar">{(user.email || 'AD').slice(0,2).toUpperCase()}</div><div><b>{user.email || 'Administrator'}</b><span>{user.role === 'SUPER_ADMIN' ? 'Super admin' : 'Admin'}</span></div></div><button className="collapse-btn" aria-label={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'} onClick={() => setSidebarOpen(!sidebarOpen)}>{sidebarOpen ? <PanelLeftClose size={17}/> : <PanelLeftOpen size={17}/>}<span>{sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}</span></button></div>
+  const activeLabel = navItems.find(item => item.id === active)?.label || 'Dashboard';
+  const breadcrumbs = breadcrumbFor(active, activeLabel);
+  const toggleGroup = label => setExpandedGroups(current => {
+    const next = new Set(current);
+    next.has(label) ? next.delete(label) : next.add(label);
+    return next;
+  });
+  const activate = id => {
+    setActive(id);
+    setSidebarOpen(false);
+    setSidebarHover(false);
+    setMobileNav(false);
+    const group = navGroups.find(section => section.items.some(item => item.id === id));
+    if (group) setExpandedGroups(current => new Set(current).add(group.label));
+  };
+  const expandedSidebar = sidebarOpen || sidebarHover;
+  return <ProtectedContent user={user}><div className={`app ${expandedSidebar ? '' : 'sidebar-collapsed'}`}>
+    <aside className={`sidebar ${mobileNav ? 'mobile-open' : ''}`} onMouseEnter={() => setSidebarHover(true)} onMouseLeave={() => setSidebarHover(false)}>
+      <div className="sidebar-head"><div className="brand-mark" title="Valor"><span>V</span></div><button className="sidebar-toggle" aria-label={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'} title={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'} onClick={() => setSidebarOpen(!sidebarOpen)}>{sidebarOpen ? <PanelLeftClose size={18}/> : <Menu size={18}/>}</button><button className="mobile-close" aria-label="Close navigation" onClick={() => setMobileNav(false)}><X size={18}/></button></div>
+      <nav className="nav" aria-label="Admin navigation"><button title="Dashboard" className={`nav-item nav-dashboard ${active === 'dashboard' ? 'active' : ''}`} onClick={() => activate('dashboard')}><Home size={18}/><span>Dashboard</span></button>{navGroups.map(group => {
+        const expanded = expandedGroups.has(group.label);
+        return <section className={`nav-group ${expanded ? 'expanded' : ''}`} key={group.label}>
+          <button className="nav-group-toggle" aria-expanded={expanded} onClick={() => toggleGroup(group.label)}><span>{group.label}</span>{expanded ? <ChevronDown size={15}/> : <ChevronRight size={15}/>}</button>
+          <div className="nav-group-items">{group.items.map(({id,label,icon:Icon}) => <button key={id} title={migrated.has(id) ? label : `${label} - migration deferred`} className={`nav-item ${active === id ? 'active' : ''}`} onClick={() => activate(id)}><Icon size={17}/><span>{label}{!migrated.has(id) && <small className="deferred-tag">Deferred</small>}</span></button>)}</div>
+        </section>;
+      })}</nav>
+      <div className="sidebar-bottom"><button className="collapse-btn" aria-label={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'} title={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'} onClick={() => setSidebarOpen(!sidebarOpen)}>{sidebarOpen ? <PanelLeftClose size={17}/> : <Menu size={17}/>}<span>{sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}</span></button></div>
     </aside>
     {mobileNav && <div className="mobile-scrim" onClick={() => setMobileNav(false)}/>}
-    <main className="main"><header className="topbar"><button className="mobile-menu" aria-label="Open navigation" onClick={() => setMobileNav(true)}><Menu size={20}/></button><div className="breadcrumbs"><span>Valor Operations</span><ChevronRight size={14}/><b>{activeLabel}</b></div><div className="topbar-title"><span>Workspace</span><strong>{activeLabel}</strong></div><div className="topbar-actions"><button className="icon-btn" aria-label="Open notifications" title="Notifications" onClick={() => setActive('notifications')}><Bell size={17}/></button><div className="user-copy"><b>{user.email || 'Administrator'}</b><span>{user.role === 'SUPER_ADMIN' ? 'Super admin' : 'Admin'}</span></div><button className="secondary-btn" disabled={loggingOut} onClick={logout}><LogOut size={15}/>{loggingOut ? 'Signing out...' : 'Log out'}</button></div></header>
-      <div className="content">{active === 'dashboard' ? <Dashboard/> : active === 'schedule' ? <ScheduleCalendarPage api={visitServices} requests={workflowServices} directories={workflowServices} notify={message => setNotice(message)}/> : active === 'technicians' ? <TechnicianAssignmentsPage api={workflowServices} user={user}/> : active === 'checklists' ? <ChecklistTemplatesPage api={phase15Services}/> : active === 'technician-profiles' ? <TechnicianProfileAdminPage api={phase15Services}/> : ['buildings','lifts','amc'].includes(active) ? <AssetPage key={active} kind={active} api={assetServices[active]} assets={assetServices} directories={workflowServices} user={user}/> : active === 'payments' ? <PaymentsPage api={paymentServices} user={user}/> : active === 'transactions' ? <TransactionsPage api={financeServices} user={user}/> : active === 'reports' ? <ReportsPage api={financeServices} user={user}/> : active === 'exports' ? <ReportsPage api={financeServices} user={user} initialType="payments"/> : active === 'roles' ? <RolesPage api={adminSecurityServices} user={user}/> : active === 'audit' ? <AuditLogPage api={adminSecurityServices} user={user}/> : active === 'customers' ? <CustomersPage api={customerServices} user={user}/> : active === 'emergency' ? <EmergencyQueuePage api={workflowServices} user={user}/> : active === 'service-requests' ? <WorkflowPage api={workflowServices} assets={assetServices} visits={visitServices} user={user}/> : active === 'notifications' ? <NotificationsPage api={notificationServices} directories={workflowServices} user={user}/> : active === 'communications' ? <CommunicationsPage api={communicationServices}/> : active === 'admin-users' ? <StaffPage api={assetServices.staff} user={user}/> : active === 'settings' ? <SettingsPage api={settingsServices} user={user}/> : <section className="panel empty-state"><h1>{activeLabel}</h1><p>This module is deferred until its API migration. No data or actions are connected.</p><button className="secondary-btn" onClick={() => setActive('dashboard')}>Back to dashboard</button></section>}</div>
+    <main className="main"><header className="topbar"><button className="mobile-menu" aria-label="Open navigation" onClick={() => setMobileNav(true)}><Menu size={20}/></button><nav className="breadcrumbs" aria-label="Breadcrumb">{breadcrumbs.map((crumb, index) => <React.Fragment key={`${crumb.label}-${index}`}>{index > 0 && <ChevronRight size={14} aria-hidden="true"/>}{crumb.current || index === breadcrumbs.length - 1 ? <b title={crumb.label}>{crumb.label}</b> : crumb.id ? <button type="button" title={crumb.label} onClick={() => activate(crumb.id)}>{crumb.label}</button> : <span title={crumb.label}>{crumb.label}</span>}</React.Fragment>)}</nav><div className="topbar-title"><span>Workspace</span><strong>{activeLabel}</strong></div><div className="topbar-actions"><button className="icon-btn" aria-label="Open notifications" title="Notifications" onClick={() => activate('notifications')}><Bell size={17}/></button><div className="user-copy"><b>{user.email || 'Administrator'}</b><span>{user.role === 'SUPER_ADMIN' ? 'Super admin' : 'Admin'}</span></div><button className="secondary-btn" disabled={loggingOut} onClick={() => setLogoutConfirm(true)}><LogOut size={15}/>{loggingOut ? 'Signing out...' : 'Log out'}</button></div></header>
+      <div className="content">{active === 'dashboard' ? <Dashboard/> : active === 'schedule' ? <ScheduleCalendarPage api={visitServices} requests={workflowServices} directories={workflowServices} notify={message => setNotice(message)}/> : active === 'technicians' ? <TechnicianAssignmentsPage api={workflowServices} user={user}/> : active === 'checklists' ? <ChecklistTemplatesPage api={phase15Services}/> : active === 'technician-profiles' ? <TechnicianProfileAdminPage api={phase15Services} directories={workflowServices}/> : ['buildings','lifts','amc'].includes(active) ? <AssetPage key={active} kind={active} api={assetServices[active]} assets={assetServices} directories={workflowServices} user={user}/> : active === 'payments' ? <PaymentsPage api={paymentServices} user={user}/> : active === 'transactions' ? <TransactionsPage api={financeServices} user={user}/> : active === 'reports' ? <ReportsPage api={financeServices} user={user}/> : active === 'exports' ? <ReportsPage api={financeServices} user={user} initialType="payments"/> : active === 'roles' ? <RolesPage api={adminSecurityServices} user={user}/> : active === 'audit' ? <AuditLogPage api={adminSecurityServices} user={user}/> : active === 'customers' ? <CustomersPage api={customerServices} user={user}/> : active === 'emergency' ? <EmergencyQueuePage api={workflowServices} user={user}/> : active === 'service-requests' ? <WorkflowPage api={workflowServices} assets={assetServices} visits={visitServices} user={user}/> : active === 'notifications' ? <NotificationsPage api={notificationServices} directories={workflowServices} user={user}/> : active === 'communications' ? <CommunicationsPage api={communicationServices}/> : active === 'settings' ? <SettingsPage api={settingsServices} user={user}/> : <section className="panel empty-state"><h1>{activeLabel}</h1><p>This module is deferred until its API migration. No data or actions are connected.</p><button className="secondary-btn" onClick={() => setActive('dashboard')}>Back to dashboard</button></section>}</div>
     </main>
+    {logoutConfirm && <div className="modal-scrim" onClick={() => setLogoutConfirm(false)}><section className="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="logout-title" onClick={event => event.stopPropagation()}><div className="confirm-icon danger"><LogOut size={22}/></div><h2 id="logout-title">Are you sure you want to log out?</h2><p>You will need to sign in again to continue managing Valor operations.</p><div className="confirm-actions"><button className="secondary-btn" type="button" onClick={() => setLogoutConfirm(false)}>Cancel</button><button className="danger-btn" type="button" disabled={loggingOut} onClick={() => { setLogoutConfirm(false); logout(); }}><LogOut size={15}/>{loggingOut ? 'Logging out...' : 'Log out'}</button></div></section></div>}
   </div></ProtectedContent>;
 }
 function Dashboard() {
@@ -103,18 +143,9 @@ function LoginScreen({ onLogin, notice }) {
     finally { setLoading(false); setPassword(''); }
   };
   return <div className="login-page">
-    <header className="login-header">
-      <div className="login-brand" aria-label="Valor Lift Services">
-        <div className="login-brand-mark" aria-hidden="true"><span>V</span></div>
-        <div className="login-brand-copy"><strong>valor</strong><small>Lift Services</small></div>
-      </div>
-      <span className="login-portal-label"><ShieldCheck size={16} aria-hidden="true"/> Admin portal</span>
-    </header>
-
     <main className="login-shell">
       <aside className="login-story" aria-label="Valor operations workspace">
         <div className="login-story-copy">
-          <span className="login-kicker"><span aria-hidden="true"/> VALOR OPERATIONS</span>
           <h2>Elevating service.<br/><span>Every day.</span></h2>
           <p>Your people, your assets, your operations.<br className="login-desktop-break"/> One connected workspace.</p>
         </div>
@@ -142,7 +173,6 @@ function LoginScreen({ onLogin, notice }) {
 
       <section className="login-form-panel" aria-labelledby="login-title">
         <div className="login-form-content">
-          <div className="login-access-icon" aria-hidden="true"><LockKeyhole size={24} strokeWidth={1.7}/></div>
           <div className="login-form-heading">
             <p className="login-form-eyebrow">SECURE ADMIN ACCESS</p>
             <h1 id="login-title">Welcome back</h1>

@@ -2,13 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { RefreshCw, RotateCcw } from 'lucide-react';
 import { ErrorState } from './assetModules.jsx';
 import { isAdmin } from './api/services.js';
+import { DataTable, PagerButtons, StatusChip } from './uiPatterns.jsx';
 
 const money = row => `${row.currency || 'INR'} ${Number(row.amount || 0).toFixed(2)}`;
 const when = value => value ? new Date(value).toLocaleString() : 'Not synced';
 
-function Badge({ value }) {
-  return <span className={`badge ${String(value || 'neutral').toLowerCase().replace(/_/g, '-')}`}><i />{String(value || 'UNKNOWN').replace(/_/g, ' ').toLowerCase()}</span>;
-}
+function Badge({ value }) { return <StatusChip value={value}/>; }
 
 function DetailRow({ label, value }) {
   return <div><span>{label}</span><b>{value || 'None'}</b></div>;
@@ -59,7 +58,7 @@ export function PaymentsPage({ api, user }) {
     let current = true;
     setLoading(true); setError(null); setNotice('');
     Promise.all([api.list(), api.reconciliation()])
-      .then(([payments, reconciliation]) => { if (current) { setData(payments); setIssues(reconciliation); if (!selected && payments.items[0]) setSelected(payments.items[0]); } })
+      .then(([payments, reconciliation]) => { if (current) { setData(payments); setIssues(reconciliation); } })
       .catch(value => { if (current) { setData(null); setIssues([]); setError(value); } })
       .finally(() => { if (current) setLoading(false); });
     return () => { current = false; };
@@ -87,20 +86,10 @@ export function PaymentsPage({ api, user }) {
     } catch (value) { setError(value); }
     finally { setRefunding(null); }
   };
+  if (selected) return <><div className="page-header"><div><div className="eyebrow">FINANCE</div><h1>Payment Details</h1><p>Backend-authoritative payment, gateway and refund state.</p></div><button className="secondary-btn" onClick={() => setSelected(null)}>Back to payments</button></div><PaymentDetail payment={selected} refunds={refunds} refunding={refunding} refundDraft={refundDraft} setRefundDraft={setRefundDraft} onRefund={requestRefund} onReload={reloadSelected}/></>;
   return <><div className="page-header"><div><div className="eyebrow">FINANCE</div><h1>Payments</h1><p>Review invoice-linked payment state, Razorpay identifiers, refunds and reconciliation issues.</p></div><button className="secondary-btn" disabled={loading} onClick={() => setRevision(value => value + 1)}><RefreshCw size={15}/>Refresh</button></div>
     <ErrorState error={error}/>{notice && <p role="status">{notice}</p>}
-    {loading ? <p role="status">Loading payments...</p> : <div className="dashboard-grid">
-      <section className="panel"><div className="panel-heading"><div><h2>Payment records</h2><span>{data?.totalElements ?? 0} backend records</span></div></div>
-        <div className="payments-table">
-          <div className="table-head"><span>ID</span><span>Invoice</span><span>Amount</span><span>Status</span><span>Gateway</span><span></span></div>
-          {(data?.items ?? []).map(row => <button key={row.id} className="table-row" style={{width:'100%',textAlign:'left'}} onClick={() => { setSelected(row); setRefundDraft({amount:'', reason:''}); }}>
-            <span className="strong">#{row.id}</span><span>{row.invoiceId ? `Invoice ${row.invoiceId}` : 'No invoice'}</span><span>{money(row)}</span><Badge value={row.status}/><span>{row.gatewayStatus || row.razorpayOrderId || 'Internal'}</span><span>Open</span>
-          </button>)}
-          {data?.items?.length ? null : <div className="empty-state"><b>No payments</b><span>No payment records were returned by the backend.</span></div>}
-        </div>
-      </section>
-      <PaymentDetail payment={selected} refunds={refunds} refunding={refunding} refundDraft={refundDraft} setRefundDraft={setRefundDraft} onRefund={requestRefund} onReload={reloadSelected}/>
-    </div>}
+    {loading ? <p role="status">Loading payments...</p> : <section className="panel asset-form"><div className="kpi-grid payment-summary-cards"><section className="kpi-card"><div className="kpi-label">Payment records</div><div className="kpi-value">{data?.totalElements ?? 0}</div></section><section className="kpi-card"><div className="kpi-label">Reconciliation issues</div><div className="kpi-value">{issues?.length ?? 0}</div></section></div><DataTable empty="No payments" rows={data?.items || []} columns={[{key:'id',label:'ID',render:r=>`#${r.id}`},{key:'invoiceId',label:'Invoice',render:r=>r.invoiceId ? `Invoice ${r.invoiceId}` : 'No invoice'},{key:'amount',label:'Amount',render:money},{key:'status',label:'Status',render:r=><Badge value={r.status}/>},{key:'gatewayStatus',label:'Gateway',render:r=>r.gatewayStatus || r.razorpayOrderId || 'Internal'}]} onRow={row => { setSelected(row); setRefundDraft({amount:'', reason:''}); }} /></section>}
     <section className="panel payments-panel"><div className="panel-heading"><div><h2>Reconciliation</h2><span>Gateway/local mismatch visibility</span></div></div>
       {(issues ?? []).length ? <div className="payments-table">{issues.map((row, index) => <div className="table-row" key={`${row.type}-${index}`}><span className="strong">{row.type}</span><span>{row.paymentId ? `Payment ${row.paymentId}` : 'No payment'}</span><span>{row.invoiceId ? `Invoice ${row.invoiceId}` : 'No invoice'}</span><span>{row.detail}</span><span></span><span></span></div>)}</div> : <div className="empty-state"><b>No reconciliation issues</b><span>The backend did not report payment mismatches.</span></div>}
     </section>

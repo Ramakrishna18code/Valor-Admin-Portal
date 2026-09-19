@@ -42,22 +42,27 @@ export function SettingsPage({ api, user }) {
     <form className="asset-form panel" onSubmit={submit}>
       {loading ? <p role="status">Loading settings...</p> : <>
         <ErrorState error={error}/>{saved && <p role="status">Settings saved.</p>}
-        <div className="asset-fields">
+        <div className="settings-grid">
+        <section className="settings-section"><h2>Company</h2><div className="asset-fields">
           <label>Company name *<input required maxLength={200} value={draft.companyName || ''} onChange={event => update('companyName', event.target.value)} /></label>
           <label>Support email<input maxLength={254} type="email" value={draft.supportEmail || ''} onChange={event => update('supportEmail', event.target.value)} /></label>
           <label>Support phone<input maxLength={20} value={draft.supportPhone || ''} onChange={event => update('supportPhone', event.target.value)} /></label>
+        </div></section>
+        <section className="settings-section"><h2>Localization</h2><div className="asset-fields">
           <label>Timezone *<input required maxLength={64} value={draft.timezone || ''} onChange={event => update('timezone', event.target.value)} /></label>
           <label>Currency *<select required value={draft.currency || 'INR'} onChange={event => update('currency', event.target.value)}>{currencies.map(value => <option key={value}>{value}</option>)}</select></label>
           <label>Date format *<select required value={draft.dateFormat || 'DD MMM YYYY'} onChange={event => update('dateFormat', event.target.value)}>{dateFormats.map(value => <option key={value}>{value}</option>)}</select></label>
+        </div></section>
+        <section className="settings-section"><h2>Operations</h2><div className="asset-fields">
           <label>Default visit duration<input required type="number" min="15" max="480" step="1" value={draft.defaultVisitDurationMinutes ?? 60} onChange={event => update('defaultVisitDurationMinutes', event.target.value)} /></label>
           <label>Maintenance reminder days<input required type="number" min="0" max="365" step="1" value={draft.maintenanceReminderDays ?? 30} onChange={event => update('maintenanceReminderDays', event.target.value)} /></label>
           <label>Emergency target minutes<input required type="number" min="5" max="1440" step="1" value={draft.emergencyResponseTargetMinutes ?? 60} onChange={event => update('emergencyResponseTargetMinutes', event.target.value)} /></label>
-        </div>
-        <div className="asset-fields">
-          <label><input type="checkbox" checked={Boolean(draft.emailNotificationsEnabled)} onChange={event => update('emailNotificationsEnabled', event.target.checked)} /> Email notifications</label>
-          <label><input type="checkbox" checked={Boolean(draft.smsNotificationsEnabled)} onChange={event => update('smsNotificationsEnabled', event.target.checked)} /> SMS notifications</label>
-          <label><input type="checkbox" checked={Boolean(draft.autoAssignRequestsEnabled)} onChange={event => update('autoAssignRequestsEnabled', event.target.checked)} /> Auto assignment</label>
-        </div>
+        </div></section>
+        <section className="settings-section"><h2>Automation</h2><div className="settings-toggles">
+          <label><input type="checkbox" checked={Boolean(draft.emailNotificationsEnabled)} onChange={event => update('emailNotificationsEnabled', event.target.checked)} /> <span>Email notifications</span></label>
+          <label><input type="checkbox" checked={Boolean(draft.smsNotificationsEnabled)} onChange={event => update('smsNotificationsEnabled', event.target.checked)} /> <span>SMS notifications</span></label>
+          <label><input type="checkbox" checked={Boolean(draft.autoAssignRequestsEnabled)} onChange={event => update('autoAssignRequestsEnabled', event.target.checked)} /> <span>Auto assignment</span></label>
+        </div></section></div>
         <div className="page-actions"><button className="primary-btn" disabled={saving}><Save size={15}/>{saving ? 'Saving...' : 'Save settings'}</button></div>
       </>}
     </form></>;
