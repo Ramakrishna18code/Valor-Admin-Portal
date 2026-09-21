@@ -4,7 +4,14 @@ import { validId } from './assets.js';
 
 const text=(value,label,max,required=false)=>{const result=String(value??'').trim();if(required&&!result)throw new ApiError(400,label+' is required.');if(max&&result.length>max)throw new ApiError(400,label+' is too long.');return result||null;};
 const email=value=>{const result=text(value,'Email',254);if(result&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(result))throw new ApiError(400,'Enter a valid email.');return result?.toLowerCase()??null;};
-const phone=(value,label)=>{const result=text(value,label,20);if(result&&!/^\+?[0-9 ()-]{7,20}$/.test(result))throw new ApiError(400,'Enter a valid '+label.toLowerCase()+'.');return result;};
+const phone=(value,label)=>{
+ const result=text(value,label,20);
+ if(!result)return result;
+ const compact=result.replace(/[\s()-]/g,'');
+ const normalized=/^\d{10}$/.test(compact)?'+91'+compact:compact;
+ if(!/^\+[1-9]\d{7,14}$/.test(normalized))throw new ApiError(400,'Enter '+label.toLowerCase()+' with country code, for example +919876543210.');
+ return normalized;
+};
 const id=value=>{if(!validId(value))throw new ApiError(400,'Select a valid customer.');return Number(value);};
 const assign=(target,key,value)=>{if(value!==null&&value!==undefined&&value!=='')target[key]=value;};
 export const customerStatuses=['all','active','inactive'];
