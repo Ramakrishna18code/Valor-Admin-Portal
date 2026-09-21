@@ -21,7 +21,7 @@ export function customerSummary(row){
 }
 export function customerDetail(data){
  const base={...customerSummary(data),alternatePhone:data.alternatePhone??null,companyName:data.companyName??null,address:data.address??null,
-  createdAt:data.createdAt??null,updatedAt:data.updatedAt??null,buildingCount:Number(data.buildingCount??0),liftCount:Number(data.liftCount??0),serviceRequestCount:Number(data.serviceRequestCount??0)};
+  hasLift:data.hasLift??null,referralCode:data.referralCode??null,createdAt:data.createdAt??null,updatedAt:data.updatedAt??null,buildingCount:Number(data.buildingCount??0),liftCount:Number(data.liftCount??0),serviceRequestCount:Number(data.serviceRequestCount??0)};
  for(const key of ['buildings','lifts','serviceRequests'])if(!Array.isArray(data[key]))throw new ApiError(502,'Invalid customer detail response.');
  return {...base,buildings:data.buildings.map(b=>Object.fromEntries('id buildingName buildingType city status isActive'.split(' ').map(k=>[k,b[k]??null]))),
   lifts:data.lifts.map(l=>Object.fromEntries('id buildingId name liftNumber currentStatus isActive'.split(' ').map(k=>[k,l[k]??null]))),
@@ -34,6 +34,8 @@ export function customerPayload(draft,mode='create'){
  assign(body,'address',text(draft.address,'Address',500));
  if(mode==='create'){
   assign(body,'email',email(draft.email));assign(body,'phone',phone(draft.phone,'Phone'));
+  if(draft.hasLift===true||draft.hasLift===false)body.hasLift=draft.hasLift;
+  assign(body,'referralCode',text(draft.referralCode,'Referral code',32));
   body.password=String(draft.password??'');
   if(!body.email&&!body.phone)throw new ApiError(400,'Email or phone is required.');
   if(!body.password.trim())throw new ApiError(400,'Temporary password is required.');

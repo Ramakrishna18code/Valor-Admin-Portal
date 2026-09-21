@@ -37,9 +37,11 @@ export function relatedAssets(customer,buildings,lifts,buildingId){
 const text=(value,label,max,required=false)=>{const result=String(value??'').trim();if(required&&!result)fail(label+' is required.');if(max&&result.length>max)fail(label+' is too long.');return result||null;};
 export function createPayload(draft,customer,buildings,lifts){
  const related=relatedAssets(customer,buildings,lifts,draft.buildingId);
- if(!related.lifts.some(l=>l.id===Number(draft.liftId)))fail('Select an active lift belonging to the selected customer and building.');
  if(!serviceTypes.includes(draft.serviceType)||!priorities.includes(draft.priority))fail('Select a supported service type and priority.');
- const body={customerProfileId:id(customer.customerProfileId),liftId:id(draft.liftId),title:text(draft.title,'Title',200,true),description:text(draft.description,'Description',null,true),serviceType:draft.serviceType,priority:draft.priority};
+ const installation=draft.serviceType==='INSTALLATION';
+ if(!installation&&!related.lifts.some(l=>l.id===Number(draft.liftId)))fail('Select an active lift belonging to the selected customer and building.');
+ const body={customerProfileId:id(customer.customerProfileId),title:text(draft.title,'Title',200,true),description:text(draft.description,'Description',null,true),serviceType:draft.serviceType,priority:draft.priority};
+ if(draft.liftId) body.liftId=id(draft.liftId);
  for(const [key,max] of [['issueCategory',100],['customerRemarks',2000],['preferredTimeSlot',80],['internalAdminNotes',2000]])body[key]=text(draft[key],key,max);
  const date=draft.preferredVisitDate;
  if(date&&(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!Number.isFinite(Date.parse(date))||new Date(date).toISOString().slice(0,10)!==date))fail('Invalid visit date.');
