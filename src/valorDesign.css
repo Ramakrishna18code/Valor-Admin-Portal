@@ -1241,3 +1241,94 @@ button.table-row:hover { background: #F8FCFE; }
     grid-template-columns: 1fr;
   }
 }
+
+.promo-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.promo-editor-card { overflow: hidden; }
+.promo-editor-preview {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 150px;
+  padding: 20px;
+  color: var(--valor-navy);
+}
+.promo-editor-preview span {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.promo-editor-preview b {
+  display: block;
+  font-size: 22px;
+}
+.promo-editor-preview p {
+  max-width: 260px;
+  margin: 8px 0 14px;
+  color: #51677f;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.promo-editor-preview button {
+  border: 0;
+  border-radius: 7px;
+  padding: 9px 13px;
+  color: #fff;
+  background: #247447;
+  font-size: 11px;
+  font-weight: 800;
+}
+.promo-editor-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 16px;
+}
+.promo-editor-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  color: #546677;
+  font-size: 10px;
+  font-weight: 700;
+}
+.promo-editor-form label:nth-child(3),
+.promo-editor-form label:nth-child(5),
+.promo-editor-form .primary-btn {
+  grid-column: 1 / -1;
+}
+.promo-editor-form input,
+.promo-editor-form textarea {
+  width: 100%;
+  border: 1px solid #dfe6ec;
+  border-radius: 7px;
+  padding: 10px;
+  color: #304862;
+  background: #fff;
+  font: inherit;
+  font-size: 11px;
+}
+.promo-editor-form textarea {
+  min-height: 76px;
+  resize: vertical;
+}
+.promo-editor-form input[type="color"] {
+  height: 39px;
+  padding: 3px;
+}
+.promo-active {
+  flex-direction: row !important;
+  align-items: center;
+}
+.promo-active input { width: 17px; }
+@media(max-width:900px) {
+  .promo-card-grid, .promo-editor-form { grid-template-columns: 1fr; }
+  .promo-editor-form label:nth-child(3),
+  .promo-editor-form label:nth-child(5),
+  .promo-editor-form .primary-btn { grid-column: auto; }
+}

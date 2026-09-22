@@ -40,3 +40,6 @@ export const phase15Services = createPhase15Services(client);
 
 import { createCommunicationServices } from './communications.js';
 export const communicationServices = createCommunicationServices(client);
+
+import { createPromotionServices } from './promotions.js';
+export const promotionServices = createPromotionServices(client);

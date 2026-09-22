@@ -93,8 +93,8 @@ is your private local value in `D:\RKKKK\Valor-Backend\.env`.
 
 ### Administration and assets
 
-Customers, Buildings, Lifts, AMC Contracts, Service Requests, Emergency Queue,
-Schedule/Service Visits, Technician Assignments, Notifications, Staff
+Customers, Buildings, Lifts, AMC Contracts, AMC Promo Cards, Service Requests,
+Emergency Queue, Schedule/Service Visits, Technician Assignments, Notifications, Staff
 provisioning, Settings, Payments, Transactions, Reports, Exports, Roles and
 Permissions, and Audit Log use canonical `/api/v1` backend services.
 
@@ -106,6 +106,10 @@ creation selects a lift/customer context, uses the Basic Maintenance, Standard
 AMC, or Premium AMC plan dropdown, defaults the start date to today, defaults
 the end date to a 12-month term, and displays the backend-generated contract
 number after save.
+
+The four customer Home AMC promotional cards are edited in Admin Portal under
+`Assets -> AMC Promo Cards`. The page updates `/api/v1/admin/amc-promotions`;
+the customer app reads the active cards from `/api/v1/customers/me/amc-promotions`.
 
 Invoices and Inventory remain deferred and are not connected to active runtime
 APIs. The Payments module is preserved from Phase 1B.1 and remains active.
