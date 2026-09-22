@@ -21,15 +21,17 @@ export function pageView(data,map){
  if(!data||!Array.isArray(data.items)||!['page','size','totalElements','totalPages'].every(k=>Number.isSafeInteger(data[k])&&data[k]>=0)||data.size<1)throw new ApiError(502,'Invalid page response.');
  return {...pick(data,'page size totalElements totalPages'),items:data.items.map(map)};
 }
-export const requestView=value=>pick(record(value),'id serviceId customerProfileId liftId title description issueCategory priority status serviceType customerRemarks technicianRemarks serviceRequestedAt preferredVisitDate preferredTimeSlot internalAdminNotes completedAt estimatedCompletionMinutes createdAt updatedAt');
+export const requestView=value=>pick(record(value),'id serviceId customerProfileId liftId title description issueCategory priority status serviceType customerRemarks technicianRemarks serviceRequestedAt preferredVisitDate preferredTimeSlot internalAdminNotes completedAt estimatedCompletionMinutes createdAt updatedAt customerName buildingName buildingAddress liftName liftNumber technicianName');
 export function detailView(value){
  if(!value||!(value.history==null||Array.isArray(value.history)))throw new ApiError(502,'Invalid request detail.');
- return {request:requestView(value.request),activeAssignment:value.activeAssignment==null?null:pick(record(value.activeAssignment),'id serviceRequestId technicianProfileId status assignedByUserId assignedAt acceptedAt releasedAt notes'),
+ return {request:requestView(value.request),activeAssignment:value.activeAssignment==null?null:pick(record(value.activeAssignment),'id serviceRequestId technicianProfileId status assignedByUserId assignedAt acceptedAt releasedAt notes technicianName'),
  history:(value.history??[]).map(row=>pick(record(row),'id fromStatus toStatus changedByUserId notes changedAt')),
  report:value.report==null?null:pick(record(value.report),'id serviceRequestId assignmentId diagnosis workPerformed testingResult completionNotes reportedByUserId createdAt updatedAt')};
 }
 export const attachmentView=value=>pick(record(value),'id serviceRequestId originalFilename contentType fileSize uploadedByUserId createdAt');
 export const feedbackView=value=>value==null?null:pick(record(value),'id serviceRequestId customerProfileId rating comment createdAt updatedAt');
+export const invoiceView=value=>pick(record(value),'id invoiceNumber customerProfileId serviceRequestId amcContractId description subtotal taxAmount totalAmount currency status issuedDate dueDate createdAt updatedAt');
+export const cashOtpView=value=>value==null?null:pick(record(value),'id paymentId invoiceId serviceRequestId status expiresAt attemptsRemaining lockedUntil verifiedAt code');
 export function relatedAssets(customer,buildings,lifts,buildingId){
  const owned=customer?.active&&customer.status==='ACTIVE'?buildings.filter(b=>b.isActive&&b.customerProfileId===customer.customerProfileId):[];
  return {buildings:owned,lifts:owned.some(b=>b.id===Number(buildingId))?lifts.filter(l=>l.isActive&&l.buildingId===Number(buildingId)):[]};
@@ -63,6 +65,8 @@ export function createWorkflowServices(client){
   async create(draft,customer,buildings,lifts){return detailView(await client.request('/service-requests',{method:'POST',body:createPayload(draft,customer,buildings,lifts)}));},
   async assign(detail,technician,notes){return detailView(await client.request('/service-requests/'+id(detail.request.id)+'/assignments',{method:'POST',body:assignmentPayload(technician,notes)}));},
   async status(detail,toStatus,notes){return detailView(await client.request('/service-requests/'+id(detail.request.id)+'/status',{method:'POST',body:statusPayload(detail,toStatus,notes)}));},
+  async createServiceInvoice(detail,dueDate=null){return invoiceView(await client.request('/admin/service-requests/'+id(detail.request.id)+'/invoice',{method:'POST',body:{dueDate:dueDate||null}}));},
+  async verifyCashOtp(paymentId,otpId,otp){return cashOtpView(await client.request('/payments/cash/otp/verify',{method:'POST',body:{paymentId:id(paymentId),otpId:id(otpId),otp:text(otp,'Cash OTP',16,true)}}));},
   async attachments(value){const rows=await client.request('/service-requests/'+id(value)+'/attachments');if(!Array.isArray(rows))throw new ApiError(502,'Invalid attachment response.');return rows.map(attachmentView);},
   async downloadAttachment(requestId,attachmentId){return client.raw('/service-requests/'+id(requestId)+'/attachments/'+id(attachmentId));},
   async deleteAttachment(requestId,attachmentId){return client.request('/service-requests/'+id(requestId)+'/attachments/'+id(attachmentId),{method:'DELETE'});},
