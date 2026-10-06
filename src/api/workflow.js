@@ -59,6 +59,7 @@ export function assignmentPayload(technician,notes){if(!technician?.active)fail(
 export function statusPayload(detail,toStatus,notes){if(!nextStatuses(detail).includes(toStatus))fail('This status action is unavailable. Refresh the request.');return {toStatus,notes:text(notes,'Notes / cancellation reason',2000,['CANCELLED','WAITING_FOR_PARTS'].includes(toStatus))};}
 export function createWorkflowServices(client){
  return {
+  async autoAssign(){const result=await client.request('/admin/service-requests/auto-assign',{method:'POST'});if(!result||!Number.isSafeInteger(result.assigned)||result.assigned<0||!Number.isSafeInteger(result.skipped)||result.skipped<0)throw new ApiError(502,'Valor returned an invalid auto-assignment result.');return result;},
   async directory(kind,filters={}){if(!['customers','technicians'].includes(kind))fail('Invalid directory.');return pageView(await client.request('/admin/'+kind+pageQuery(filters)),row=>pick(record(row,kind==='customers'?'customerProfileId':'technicianProfileId'),kind==='customers'?'userId customerProfileId fullName email active status':'userId technicianProfileId email active employeeId assignedArea specialization availabilityStatus'));},
   async list(filters){return pageView(await client.request('/service-requests'+pageQuery(filters)),requestView);},
   async detail(value){return detailView(await client.request('/service-requests/'+id(value)));},

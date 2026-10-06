@@ -1,7 +1,7 @@
 import { ApiError } from './client.js';
 export const isAdmin = user => ['ADMIN', 'SUPER_ADMIN'].includes(user?.role);
 export const routeState = (loading, user) => loading ? 'loading' : isAdmin(user) ? 'authenticated' : 'login';
-export const summaryFields = ['totalCustomers','totalLifts','totalRequests','pendingJobs','completedJobs','emergencyJobs','totalTechnicians','totalAmcs'];
+export const summaryFields = ['unassignedRequests','inProgressRequests','emergencyJobs'];
 export function mapSummary(data) {
   if (!data || summaryFields.some(key => !Number.isSafeInteger(data[key]) || data[key] < 0)) throw new ApiError(502, 'Valor returned an invalid dashboard summary.');
   return Object.fromEntries(summaryFields.map(key => [key, data[key]]));

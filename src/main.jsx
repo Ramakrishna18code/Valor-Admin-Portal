@@ -98,12 +98,20 @@ function App() {
 }
 function Dashboard() {
   const [data,setData] = useState(null), [error,setError] = useState(null), [loading,setLoading] = useState(true), [revision,setRevision] = useState(0);
+  const [autoAssigning,setAutoAssigning] = useState(false), [notice,setNotice] = useState('');
   useEffect(() => {
     let current = true; setLoading(true); setError(null); setData(null);
     services.dashboard.summary().then(result => { if(current) setData(result); }).catch(failure => { if(current) setError(failure); }).finally(() => { if(current) setLoading(false); });
     return () => { current = false; };
   }, [revision]);
-  return <SummaryView data={data} error={error} loading={loading} refresh={() => setRevision(value => value+1)}/>;
+  const autoAssign = async () => {
+    if (!window.confirm('Assign pending requests to active available technicians by service match, area, and current workload?')) return;
+    setAutoAssigning(true); setNotice(''); setError(null);
+    try { const result = await workflowServices.autoAssign(); setNotice(`${result.assigned} assigned · ${result.skipped} left for manual assignment`); setRevision(value => value + 1); }
+    catch (failure) { setError(failure); }
+    finally { setAutoAssigning(false); }
+  };
+  return <SummaryView data={data} error={error} loading={loading} refresh={() => setRevision(value => value+1)} onAutoAssign={autoAssign} autoAssigning={autoAssigning} notice={notice}/>;
 }
 function LoginScreen({ onLogin, notice }) {
   const [email, setEmail] = useState('');

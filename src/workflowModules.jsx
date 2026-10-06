@@ -45,6 +45,7 @@ const fields = (record, keys) => <dl>{keys.map(key => <React.Fragment key={key}>
 
 function PagedDetailTable({ title, columns, rows, empty }) {
   const [page, setPage] = useState(0);
+  if (!rows?.length) return null;
   const totalPages = Math.max(1, Math.ceil((rows?.length || 0) / detailPageSize));
   const safePage = Math.min(page, totalPages - 1);
   const items = (rows || []).slice(safePage * detailPageSize, safePage * detailPageSize + detailPageSize);
@@ -56,12 +57,38 @@ function RequestEngagement({ attachments = [], feedback = null, error = null, lo
     <PagedDetailTable title="Customer feedback" empty="No customer feedback returned." rows={feedback ? [feedback] : []} columns={[{key:'rating',label:'Rating'},{key:'comment',label:'Comment'},{key:'createdAt',label:'Created',render:r=>displayValue(r.createdAt)},{key:'updatedAt',label:'Updated',render:r=>displayValue(r.updatedAt)}]} /></>;
 }
 
-export function RequestDetail({ detail, attachments = [], feedback = null, engagementError = null, engagementLoading = false, engagementBusy = false, onOpenAttachment, onDeleteAttachment }) {
-  return <><h2>{detail.request.serviceId} - {detail.request.title}</h2>{fields(detail.request, ['id', 'customerName', 'customerProfileId', 'buildingName', 'buildingAddress', 'liftName', 'liftNumber', 'liftId', 'technicianName', 'status', 'priority', 'serviceType', 'description', 'issueCategory', 'customerRemarks', 'technicianRemarks', 'internalAdminNotes', 'preferredVisitDate', 'preferredTimeSlot', 'estimatedCompletionMinutes', 'serviceRequestedAt', 'completedAt'])}
-    <h3>Active assignment</h3>{detail.activeAssignment ? fields(detail.activeAssignment, ['id', 'technicianName', 'technicianProfileId', 'status', 'assignedAt', 'acceptedAt', 'notes']) : <p>No active assignment.</p>}
+const present = value => value !== null && value !== undefined && String(value).trim() !== '';
+const detailValue = value => typeof value === 'boolean' ? (value ? 'Yes' : 'No') : String(value);
+function DetailSection({ title, rows }) {
+  const visible = rows.filter(([, value]) => present(value));
+  return visible.length ? <section className="request-detail-section"><div className="panel-heading"><div><h3>{title}</h3></div></div><dl className="request-detail-list">{visible.map(([label, value]) => <React.Fragment key={label}><dt>{label}</dt><dd>{value}</dd></React.Fragment>)}</dl></section> : null;
+}
+
+function RequestOverview({ request }) {
+  return <section className="request-overview">
+    <div><span className="eyebrow">SERVICE REQUEST</span><h2>{request.serviceId || `Request #${request.id}`}</h2><p>{request.title || 'Service request'}</p></div>
+    <div className="request-overview-status"><StatusChip value={request.status} />{request.priority ? <PriorityChip value={request.priority} /> : null}</div>
+  </section>;
+}
+
+export function RequestDetail({ detail, showOverview = true, attachments = [], feedback = null, engagementError = null, engagementLoading = false, engagementBusy = false, onOpenAttachment, onDeleteAttachment }) {
+  const request = detail.request;
+  return <>
+    {showOverview ? <RequestOverview request={request} /> : null}
+    <DetailSection title="Customer and site" rows={[
+      ['Customer', request.customerName], ['Customer profile', request.customerProfileId], ['Building', request.buildingName], ['Address', request.buildingAddress], ['Lift', request.liftName], ['Lift number', request.liftNumber],
+    ]} />
+    <DetailSection title="Service details" rows={[
+      ['Service type', request.serviceType], ['Issue category', request.issueCategory], ['Description', request.description], ['Customer remarks', request.customerRemarks], ['Requested', request.serviceRequestedAt], ['Preferred visit', [request.preferredVisitDate, request.preferredTimeSlot].filter(present).join(' · ')], ['Estimated duration', present(request.estimatedCompletionMinutes) ? `${request.estimatedCompletionMinutes} minutes` : null],
+    ]} />
+    <DetailSection title="Operations" rows={[['Internal notes', request.internalAdminNotes], ['Completed', request.completedAt]]} />
+    {detail.activeAssignment ? <DetailSection title="Technician and assignment" rows={[
+      ['Technician', detail.activeAssignment.technicianName || request.technicianName], ['Assignment status', detail.activeAssignment.status], ['Assigned', detail.activeAssignment.assignedAt], ['Accepted', detail.activeAssignment.acceptedAt], ['Notes', detail.activeAssignment.notes],
+    ]} /> : null}
     <PagedDetailTable title="Status history" empty="No status history returned." rows={detail.history} columns={[{key:'fromStatus',label:'From',render:r=>r.fromStatus ? <StatusChip value={r.fromStatus}/> : 'Created'},{key:'toStatus',label:'To',render:r=><StatusChip value={r.toStatus}/>},{key:'changedAt',label:'Changed',render:r=>displayValue(r.changedAt)},{key:'notes',label:'Notes',render:r=>displayValue(r.notes)}]} />
-    <PagedDetailTable title="Reports" empty="No service report returned." rows={detail.report ? [detail.report] : []} columns={[{key:'id',label:'ID'},{key:'assignmentId',label:'Assignment'},{key:'diagnosis',label:'Diagnosis'},{key:'workPerformed',label:'Work performed'},{key:'testingResult',label:'Testing'},{key:'createdAt',label:'Created',render:r=>displayValue(r.createdAt)}]} />
-    <RequestEngagement attachments={attachments} feedback={feedback} error={engagementError} loading={engagementLoading} busy={engagementBusy} onOpenAttachment={onOpenAttachment} onDeleteAttachment={onDeleteAttachment} /></>;
+    <PagedDetailTable title="Service report" empty="No service report returned." rows={detail.report ? [detail.report] : []} columns={[{key:'diagnosis',label:'Diagnosis'},{key:'workPerformed',label:'Work performed'},{key:'testingResult',label:'Testing'},{key:'completionNotes',label:'Completion notes'},{key:'createdAt',label:'Created',render:r=>displayValue(r.createdAt)}]} />
+    <RequestEngagement attachments={attachments} feedback={feedback} error={engagementError} loading={engagementLoading} busy={engagementBusy} onOpenAttachment={onOpenAttachment} onDeleteAttachment={onDeleteAttachment} />
+  </>;
 }
 
 function ServiceFinanceActions({ detail, api, busy, setBusy, setError }) {
@@ -124,8 +151,17 @@ export function DetailPage({ id, api, visits, onBack }) {
     finally { setEngagementBusy(false); }
   };
   const terminal = detail && ['COMPLETED', 'CANCELLED'].includes(detail.request.status);
-  return <section className="asset-form panel"><div className="page-actions"><button className="secondary-btn" disabled={busy || engagementBusy} onClick={onBack}>Back to requests</button><button className="secondary-btn" disabled={busy || engagementBusy || loading} onClick={() => setRevision(value => value + 1)}>Reload detail</button></div><ErrorState error={error} />{loading ? <p role="status">Loading request...</p> : detail && <><RequestDetail detail={detail} attachments={attachments} feedback={feedback} engagementError={engagementError} engagementLoading={engagementLoading} engagementBusy={engagementBusy} onOpenAttachment={openAttachment} onDeleteAttachment={deleteAttachment} />{visits && <><ErrorState error={visitError} /><VisitSummary visits={visitData} />{!terminal && <VisitScheduler detail={detail} visits={visitData} visitApi={visits} busy={busy} onSaved={() => setRevision(value => value + 1)} />}</>}<ServiceFinanceActions detail={detail} api={api} busy={busy} setBusy={setBusy} setError={setError} />{!terminal && <><h3>Assign / reassign technician</h3><p>Reassignment releases the current assignment. An advanced reassignment must be accepted in the technician client before further progress.</p><DirectoryPicker api={api} kind="technicians" selected={technician} onSelect={setTechnician} disabled={busy} /><label>Assignment notes<textarea maxLength={2000} disabled={busy} value={notes} onChange={event => setNotes(event.target.value)} /></label><button className="primary-btn" disabled={busy || !technician} onClick={() => { if (window.confirm('Assign selected technician and release any current assignment?')) mutate(() => api.assign(detail, technician, notes)); }}>Assign technician</button>
-    <h3>Update status</h3><p>Actions depend on the latest backend state. Completion requires the active assignment's valid technician report. Reports and the technician acceptance endpoint are not available here.</p><form onSubmit={event => { event.preventDefault(); if (window.confirm('Submit status ' + toStatus + '?')) mutate(() => api.status(detail, toStatus, statusNotes)); }}><label>Next status<select required disabled={busy} value={toStatus} onChange={event => setToStatus(event.target.value)}><option value="">Select action</option>{nextStatuses(detail).map(value => <option key={value}>{value}</option>)}</select></label><label>Notes / cancellation reason<textarea disabled={busy} maxLength={2000} required={['CANCELLED', 'WAITING_FOR_PARTS'].includes(toStatus)} value={statusNotes} onChange={event => setStatusNotes(event.target.value)} /></label><button className="primary-btn" disabled={busy || !toStatus}>Submit status</button></form></>}</>}</section>;
+  const next = detail ? nextStatuses(detail) : [];
+  const assignmentPicker = <><DirectoryPicker api={api} kind="technicians" selected={technician} onSelect={setTechnician} disabled={busy} /><label>Assignment notes<textarea maxLength={2000} disabled={busy} value={notes} onChange={event => setNotes(event.target.value)} /></label><button className="primary-btn" disabled={busy || !technician} onClick={() => { if (window.confirm('Assign selected technician and release any current assignment?')) mutate(() => api.assign(detail, technician, notes)); }}>Assign technician</button></>;
+  return <section className="asset-form panel"><div className="page-actions"><button className="secondary-btn" disabled={busy || engagementBusy} onClick={onBack}>Back to requests</button><button className="secondary-btn" disabled={busy || engagementBusy || loading} onClick={() => setRevision(value => value + 1)}>Reload detail</button></div><ErrorState error={error} />{loading ? <p role="status">Loading request...</p> : detail && <>
+    <RequestOverview request={detail.request} />
+    {!terminal && !detail.activeAssignment ? <section className="workflow-priority"><span className="eyebrow">NEXT REQUIRED ACTION</span><h2>Assign a technician</h2><p>This request cannot move into service until an active technician is assigned.</p>{assignmentPicker}</section> : null}
+    <RequestDetail detail={detail} showOverview={false} attachments={attachments} feedback={feedback} engagementError={engagementError} engagementLoading={engagementLoading} engagementBusy={engagementBusy} onOpenAttachment={openAttachment} onDeleteAttachment={deleteAttachment} />
+    {visits && detail.activeAssignment ? <><ErrorState error={visitError} /><VisitSummary visits={visitData} />{!terminal && <VisitScheduler detail={detail} visits={visitData} visitApi={visits} busy={busy} onSaved={() => setRevision(value => value + 1)} />}</> : null}
+    <ServiceFinanceActions detail={detail} api={api} busy={busy} setBusy={setBusy} setError={setError} />
+    {!terminal && detail.activeAssignment ? <section className="workflow-secondary"><h3>Reassign technician</h3><p>Use reassignment only when the current technician cannot complete the visit.</p>{assignmentPicker}</section> : null}
+    {!terminal && next.length ? <section className="workflow-primary"><span className="eyebrow">CURRENT WORKFLOW</span><h2>Choose the next valid action</h2><form onSubmit={event => { event.preventDefault(); if (window.confirm('Submit status ' + toStatus + '?')) mutate(() => api.status(detail, toStatus, statusNotes)); }}><label>Next action<select required disabled={busy} value={toStatus} onChange={event => setToStatus(event.target.value)}><option value="">Select action</option>{next.map(value => <option key={value}>{value}</option>)}</select></label><label>Notes / cancellation reason<textarea disabled={busy} maxLength={2000} required={['CANCELLED', 'WAITING_FOR_PARTS'].includes(toStatus)} value={statusNotes} onChange={event => setStatusNotes(event.target.value)} /></label><button className="primary-btn" disabled={busy || !toStatus}>{busy ? 'Saving...' : 'Apply workflow action'}</button></form></section> : null}
+  </>}</section>;
 }
 
 export function WorkflowPage({ api, assets, visits, user }) {
