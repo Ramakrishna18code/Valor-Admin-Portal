@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {createAssetServices,payloadFor,fieldsFor,safeStaff,confirmedDeactivation} from '../src/api/assets.js';
 import {createApiClient} from '../src/api/client.js';
 import {createSession} from '../src/api/session.js';
-const inputs={buildings:{customerProfileId:'12',buildingName:'Tower'},lifts:{buildingId:'13',name:'Passenger lift'},amc:{liftId:'14',plan:'Basic Maintenance',startDate:'2026-09-11',endDate:'2027-09-10'}};
+const inputs={buildings:{customerProfileId:'12',buildingName:'Tower',latitude:'17.385044',longitude:'78.486671'},lifts:{buildingId:'13',name:'Passenger lift'},amc:{liftId:'14',plan:'Basic Maintenance',startDate:'2026-09-11',endDate:'2027-09-10'}};
 function fixture(response){const calls=[];const api=createAssetServices({request:async(path,options)=>{calls.push({path,options});if(response instanceof Error)throw response;return response;}});return {api,calls};}
 for(const [kind,path] of Object.entries({buildings:'/buildings',lifts:'/lifts',amc:'/amc-contracts'})){
  test(kind+' list and create use canonical endpoint and whitelist payload',async()=>{const f=fixture([{id:1}]);assert.deepEqual(await f.api[kind].list(),[{id:1}]);assert.equal(f.calls[0].path,path);const g=fixture({id:7});assert.equal((await g.api[kind].create({...inputs[kind],customerId:999,statusCalculated:'fake'})).id,7);assert.equal(g.calls[0].path,path);assert.equal(g.calls[0].options.method,'POST');assert(!Object.hasOwn(g.calls[0].options.body,'customerId'));assert(!Object.hasOwn(g.calls[0].options.body,'statusCalculated'));if(kind==='amc')assert(!Object.hasOwn(g.calls[0].options.body,'amcNumber'));});

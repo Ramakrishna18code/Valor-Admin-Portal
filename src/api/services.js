@@ -1,10 +1,21 @@
 import { ApiError } from './client.js';
 export const isAdmin = user => ['ADMIN', 'SUPER_ADMIN'].includes(user?.role);
 export const routeState = (loading, user) => loading ? 'loading' : isAdmin(user) ? 'authenticated' : 'login';
-export const summaryFields = ['unassignedRequests','inProgressRequests','emergencyJobs'];
+export const summaryFields = [
+  'unassignedRequests','inProgressRequests','emergencyJobs',
+  'customerCount','buildingCount','liftCount','amcCount',
+  'standardAmcCount','premiumAmcCount','comprehensiveAmcCount',
+  'technicianCount','availableTechnicianCount','busyTechnicianCount',
+  'onLeaveTechnicianCount','notAvailableTechnicianCount',
+  'paymentCount','pendingPaymentCount','outstandingInvoiceCount'
+];
+export const coreSummaryFields = ['unassignedRequests','inProgressRequests','emergencyJobs'];
 export function mapSummary(data) {
-  if (!data || summaryFields.some(key => !Number.isSafeInteger(data[key]) || data[key] < 0)) throw new ApiError(502, 'Valor returned an invalid dashboard summary.');
-  return Object.fromEntries(summaryFields.map(key => [key, data[key]]));
+  if (!data || coreSummaryFields.some(key => !Number.isSafeInteger(data[key]) || data[key] < 0)) throw new ApiError(502, 'Valor returned an invalid dashboard summary.');
+  const result = Object.fromEntries(coreSummaryFields.map(key => [key, data[key]]));
+  const extended = summaryFields.filter(key => !coreSummaryFields.includes(key));
+  if (extended.every(key => Number.isSafeInteger(data[key]) && data[key] >= 0)) for (const key of extended) result[key] = data[key];
+  return result;
 }
 export function mapHealth(data, baseUrl) {
   if (!data || data.status !== 'UP') throw new ApiError(502, 'Valor returned an invalid health response.');

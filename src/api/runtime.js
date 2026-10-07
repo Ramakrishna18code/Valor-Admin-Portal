@@ -43,3 +43,7 @@ export const communicationServices = createCommunicationServices(client);
 
 import { createPromotionServices } from './promotions.js';
 export const promotionServices = createPromotionServices(client);
+import { createPartsServices } from './parts.js';
+export const partsServices = createPartsServices(client);
+import { createTechnicianApplicationServices } from './technicianApplications.js';
+export const technicianApplicationServices = createTechnicianApplicationServices(client);

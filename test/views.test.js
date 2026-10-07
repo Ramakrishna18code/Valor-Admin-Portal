@@ -16,9 +16,8 @@ test('protected content and dashboard render loading, empty, errors and real met
   assert(render(SummaryView,{error:{status:403,message:'Forbidden'}}).includes('Access denied'));
   assert(render(SummaryView,{error:{status:500,message:'Unavailable'}}).includes('Dashboard unavailable'));
   const data=Object.fromEntries(summaryFields.map(key=>[key,0]));
-  assert(render(SummaryView,{data}).includes('No operational records yet'));
-  const html=render(SummaryView,{data:{...data,totalRequests:123},health:{backendUrl:'http://localhost:8081',checkedAt:'2026-09-15T00:00:00.000Z'}});
-  assert(html.includes('123'));assert(html.includes('Service requests'));assert(html.includes('Backend API'));assert(html.includes('Connected'));assert(!html.includes('Jobs today'));assert(!html.includes('Detailed operations are deferred'));
+  const html=render(SummaryView,{data});
+  assert(html.includes('Service operations'));assert(html.includes('Customers and assets'));assert(html.includes('Technicians'));assert(html.includes('Finance'));assert(html.includes('Unassigned'));assert(html.includes('Open emergency'));assert(html.includes('0'));assert(!html.includes('Detailed operations are deferred'));
  } finally { await server.close(); }
 });
 test('asset and staff screens show backend values, role controls and no unsupported directory',async()=>{

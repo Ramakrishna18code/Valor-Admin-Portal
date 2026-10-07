@@ -1,5 +1,7 @@
 # Valor Admin Portal
 
+Building create/edit uses the canonical asset API and requires customer ownership plus valid latitude and longitude. The legacy customer creation flow that could create coordinate-less buildings is disabled. Persistent customer lift service codes are not displayed in Admin by default.
+
 Valor Admin Portal is a responsive operations workspace for Valor Lift Services. It provides secure admin authentication, service operations, field scheduling, asset management, notifications, settings, and payment operations backed by the canonical Valor API.
 
 ## Technology
@@ -70,11 +72,11 @@ is your private local value in `D:\RKKKK\Valor-Backend\.env`.
 
 ### Dashboard
 
-- Live KPI and service-job responses from the backend
-- Refresh and CSV export
-- View, Edit, and Delete action menus
-- Responsive detail and edit dialogs
-- View-all navigation to operational modules
+- Three primary live operational cards: Unassigned, In progress, and Open emergency
+- Backend-backed customer, building, lift, AMC-plan, technician-availability, and finance counts
+- Auto-assign action refreshes the summary so assignment changes immediately update the cards
+- Clickable cards open the relevant module with the matching service, status, priority, asset, or finance view
+- Responsive, keyboard-accessible KPI cards with no live-tracking or fleet-map dashboard
 
 ### Service Requests
 
@@ -321,3 +323,6 @@ SMS/OTP, WhatsApp, and communication preferences are backend-authoritative. The 
 Communication event automation is backend-driven. The Admin Portal should continue to use the existing `/api/v1/admin/communications/**` endpoints for delivery visibility and preferences. Service alerts, report-ready messages, assignment notices, and payment/report communication records are created by backend business events; the portal must not create fake delivery history or expose provider credentials.
 
 Do not expose MSG91 auth keys, WhatsApp API keys, OTP values, provider payloads, or fake delivery history in the UI. External providers remain mock/deferred.
+## Location visibility
+
+Admin technician profiles can view/edit configured default coordinates, customer building summaries include building coordinates, and service workflow data includes one-time job-start coordinates/time and status. The portal does not provide fleet tracking, live maps, geofence dashboards, route dashboards, or dynamic ETA dashboards.

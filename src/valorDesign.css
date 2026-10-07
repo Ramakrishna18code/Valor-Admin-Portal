@@ -51,6 +51,7 @@ button:disabled, input:disabled, select:disabled, textarea:disabled {
 .app {
   height: 100vh;
   min-height: 100vh;
+  display: flex;
   overflow: hidden;
   background: transparent;
 }
@@ -463,6 +464,19 @@ button:disabled, input:disabled, select:disabled, textarea:disabled {
 .tone-danger .kpi-icon { background: var(--danger-bg); color: var(--danger); }
 .tone-cyan .kpi-icon { background: #E8F8FC; color: #25769B; }
 .tone-navy .kpi-icon { background: #EAF0F7; color: var(--valor-navy); }
+.tone-blue .kpi-icon { background: #EAF0FF; color: #4775ED; }
+.tone-teal .kpi-icon { background: #E7F7F4; color: #159A87; }
+.tone-violet .kpi-icon { background: #F0EFFD; color: #806BD6; }
+.tone-green .kpi-icon { background: var(--success-bg); color: var(--success); }
+.kpi-card-action { cursor: pointer; transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease; }
+.kpi-card-action:hover, .kpi-card-action:focus-visible { transform: translateY(-2px); border-color: var(--valor-blue-2); box-shadow: var(--shadow-md); }
+.kpi-card-action:focus-visible { outline: 3px solid rgba(73, 136, 196, .28); outline-offset: 2px; }
+.kpi-link { display: block; color: var(--valor-blue); font-size: 10px; font-weight: 700; margin-top: 7px; }
+.dashboard-group { margin-bottom: 24px; }
+.dashboard-group-head { display: flex; align-items: center; min-height: 28px; margin-bottom: 10px; }
+.dashboard-group-head h2 { margin: 0; color: var(--valor-navy); font-size: 15px; letter-spacing: -.1px; }
+.dashboard-group .kpi-grid { margin-bottom: 0; }
+.dashboard-sync-note { margin: -8px 0 24px; color: var(--muted); font-size: 11px; }
 .dashboard-overview-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr);

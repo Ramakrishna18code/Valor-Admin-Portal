@@ -110,6 +110,10 @@ export function AdminModulePage({ moduleId, module, notify }) {
       setError('Add a building before adding the first lift.');
       return;
     }
+    if (moduleId === 'customers' && draft.buildingName?.trim()) {
+      setError('Create buildings from the canonical Buildings screen so coordinates can be confirmed.');
+      return;
+    }
     const { buildingName, buildingType, liftName, liftNumber, ...recordPayload } = draft;
     const payload = moduleId === 'buildings' || moduleId === 'lifts'
       ? { ...draft, customerId: draft.customerId ? Number(draft.customerId) : undefined, buildingId: draft.buildingId ? Number(draft.buildingId) : undefined }
