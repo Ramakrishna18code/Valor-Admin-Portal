@@ -31,7 +31,8 @@ function MetricCard({item, data, onClick}) {
   return <section className={`kpi-card tone-${tone}${interactive ? ' kpi-card-action' : ''}`} role={interactive ? 'button' : undefined} tabIndex={interactive ? 0 : undefined} onClick={interactive ? () => onClick(target) : undefined} onKeyDown={interactive ? event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onClick(target); } } : undefined} aria-label={interactive ? `Open ${label}` : undefined}><div className="kpi-top"><div className="kpi-label">{label}</div><div className="kpi-icon"><Icon size={18}/></div></div><div className="kpi-value">{Number(data?.[key] ?? 0).toLocaleString()}</div>{interactive && <span className="kpi-link">Open</span>}</section>;
 }
 function MetricGroup({title, cards: groupCards, data, onClick}) {
-  return <section className="dashboard-group"><div className="dashboard-group-head"><h2>{title}</h2></div><div className="kpi-grid">{groupCards.map(item => <MetricCard key={item[0]} item={item} data={data} onClick={onClick}/>)}</div></section>;
+  const clickHandler = onClick || (title === 'Technicians' ? target => window.dispatchEvent(new CustomEvent('valor:open-technicians', { detail: target })) : undefined);
+  return <section className="dashboard-group"><div className="dashboard-group-head"><h2>{title}</h2></div><div className="kpi-grid">{groupCards.map(item => <MetricCard key={item[0]} item={item} data={data} onClick={clickHandler}/>)}</div></section>;
 }
 export function SummaryView({data, loading, error, refresh, onAutoAssign, autoAssigning = false, notice = '', onCardClick}) {
   const openCard = target => onCardClick?.(target);
