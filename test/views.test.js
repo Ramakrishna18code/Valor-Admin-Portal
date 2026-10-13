@@ -27,7 +27,7 @@ test('asset and staff screens show backend values, role controls and no unsuppor
   const render=(component,props)=>renderToStaticMarkup(React.createElement(component,props));
   assert.equal(displayValue(null),'Not provided');assert.equal(displayValue(0),'0');assert.equal(displayValue(false),'No');
   const html=render(AssetTable,{kind:'amc',rows:[{id:1,amcNumber:'Actual contract',status:'EXPIRED',covered:false,endDate:null}],canWrite:true});
-  assert(html.includes('Actual contract'));assert(html.includes('EXPIRED'));assert(html.includes('No'));assert(html.includes('Renew'));assert(!html.includes('Deactivate'));
+  assert(html.includes('Actual contract'));assert(html.includes('expired'));assert(html.includes('No'));assert(html.includes('View details'));assert(!html.includes('Deactivate'));
   assert(!render(AssetTable,{kind:'buildings',rows:[{id:1,isActive:true}],canWrite:false}).includes('Deactivate'));
   const staff=render(StaffPage,{user:{role:'SUPER_ADMIN'},api:{}});assert(staff.includes('Staff directory unavailable'));assert(staff.includes('disabled'));assert(!staff.includes('<table'));
   assert(render(StaffPage,{user:{role:'ADMIN'},api:{}}).includes('requires SUPER_ADMIN'));
@@ -67,9 +67,9 @@ test('notification UI separates personal inbox and compose, renders safe timesta
  const server=await createServer({server:{middlewareMode:true},appType:'custom'});
  try{const {NotificationTable,ComposeNotification,NotificationsPage}=await server.ssrLoadModule('/src/notificationModules.jsx');const render=(c,p)=>renderToStaticMarkup(React.createElement(c,p));
  const row={id:1,recipientUserId:9,title:'Actual title',message:'<script>unsafe</script>',channel:'IN_APP',status:'PENDING',readAt:null};
- const html=render(NotificationTable,{items:[row],userId:9});assert(html.includes('Mark read'));assert(html.includes('Not provided'));assert(!html.includes('<script>unsafe'));assert(html.includes('&lt;script&gt;'));
+ const html=render(NotificationTable,{items:[row],userId:9,onOpen:()=>{}});assert(!html.includes('Mark read'));assert(html.includes('Not provided'));assert(!html.includes('<script>unsafe'));assert(html.includes('&lt;script&gt;'));assert(html.includes('View details'));
  assert(!render(NotificationTable,{items:[row],userId:8}).includes('Mark read'));assert(!render(NotificationTable,{items:[{...row,status:'READ'}],userId:9}).includes('Mark read'));
  const compose=render(ComposeNotification,{api:{},directories:{}});assert(compose.includes('Search customers'));assert(compose.includes('UTC, not local time'));assert(!compose.includes('type="number"'));assert(compose.includes('IN_APP'));
- assert(render(NotificationsPage,{api:{},directories:{},user:{role:'ADMIN',userId:9}}).includes('My notification inbox'));assert(render(NotificationsPage,{api:{},directories:{},user:{role:'TECHNICIAN'}}).includes('Access denied'));
+ const inbox=render(NotificationsPage,{api:{},directories:{},user:{role:'ADMIN',userId:9}});assert(inbox.includes('My notification inbox'));assert(inbox.includes('Mark All Read'));assert(render(NotificationsPage,{api:{},directories:{},user:{role:'TECHNICIAN'}}).includes('Access denied'));
  }finally{await server.close();}
 });
