@@ -47,3 +47,7 @@ import { createPartsServices } from './parts.js';
 export const partsServices = createPartsServices(client);
 import { createTechnicianApplicationServices } from './technicianApplications.js';
 export const technicianApplicationServices = createTechnicianApplicationServices(client);
+import { createInstallationServices } from './installations.js';
+import { createConfigurationServices } from './configuration.js';
+export const installationServices = createInstallationServices(client);
+export const configurationServices = createConfigurationServices(client);

@@ -1,0 +1,3 @@
+export function createConfigurationServices(client) {
+  return { list: (category,page=0,size=20) => client.request(`/admin/config/asset-options?category=${encodeURIComponent(category)}&page=${page}&size=${size}`), active: category => client.request(`/config/asset-options/${encodeURIComponent(category)}`), create: body => client.request('/admin/config/asset-options',{method:'POST',body}), update: (id,body) => client.request(`/admin/config/asset-options/${encodeURIComponent(id)}`,{method:'PUT',body}), deactivate: id => client.request(`/admin/config/asset-options/${encodeURIComponent(id)}`,{method:'DELETE'}) };
+}
