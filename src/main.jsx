@@ -31,7 +31,7 @@ const dashboardNav = { id: 'dashboard', label: 'Dashboard', icon: Home };
 const navGroups = [
   { id: 'operations', label: 'OPERATIONS', icon: ClipboardList, items: [
     { id: 'service-requests', label: 'Service Requests', icon: ClipboardList }, { id: 'checklists', label: 'Checklists', icon: ClipboardList }, { id: 'emergency', label: 'Emergency Queue', icon: AlertTriangle },
-    { id: 'schedule', label: 'Schedule', icon: CalendarDays }, { id: 'technicians', label: 'Technician Assignments', icon: Wrench }
+    { id: 'schedule', label: 'Schedule', icon: CalendarDays }, { id: 'technicians', label: 'Technician Assignments', icon: Wrench }, { id: 'installations', label: 'Installation Management', icon: ClipboardList }
   ]},
   { id: 'assets', label: 'ASSETS', icon: Building2, items: [
     { id: 'customers', label: 'Customers', icon: Users }, { id: 'buildings', label: 'Buildings', icon: Building2 },
@@ -42,7 +42,7 @@ const navGroups = [
   { id: 'communication', label: 'COMMUNICATION', icon: Bell, items: [{ id: 'notifications', label: 'Notifications', icon: Bell }, { id: 'communications', label: 'Communications', icon: Bell }] },
   { id: 'analytics', label: 'ANALYTICS', icon: BarChart3, items: [{ id: 'reports', label: 'Reports', icon: BarChart3 }, { id: 'exports', label: 'Exports', icon: Download }] },
   { id: 'administration', label: 'ADMINISTRATION', icon: Settings, items: [
-    { id: 'technician-applications', label: 'Technician Approvals', icon: UserRound }, { id: 'installations', label: 'Installation Management', icon: ClipboardList }, { id: 'configuration', label: 'Asset Configuration', icon: Settings }, { id: 'technician-profiles', label: 'Technician Profiles', icon: UserRound }, { id: 'roles', label: 'Roles & Permissions', icon: ShieldCheck },
+    { id: 'technician-applications', label: 'Technician Approvals', icon: UserRound }, { id: 'configuration', label: 'Asset Configuration', icon: Settings }, { id: 'technician-profiles', label: 'Technician Profiles', icon: UserRound }, { id: 'roles', label: 'Roles & Permissions', icon: ShieldCheck },
     { id: 'audit', label: 'Audit Log', icon: Database }, { id: 'settings', label: 'Settings', icon: Settings }
   ]}
 ];
