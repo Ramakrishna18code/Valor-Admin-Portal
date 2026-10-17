@@ -4,6 +4,7 @@ import { ErrorState } from './assetModules.jsx';
 import { StatusChip } from './uiPatterns.jsx';
 import './scheduleCalendar.css';
 
+
 const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const dateKey = date => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 const monthDays = month => {
@@ -113,6 +114,7 @@ export function ScheduleCalendarPage({ api, requests, directories, notify }) {
 
   return <div className="schedule-page">
     <ErrorState error={error}/>
+
     <section className="panel schedule-panel">
       <div className="schedule-toolbar"><div className="schedule-nav"><button className="icon-btn" type="button" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))} aria-label="Previous month"><ChevronLeft size={17}/></button><button className="today-btn" type="button" onClick={() => { setMonth(new Date()); setSelectedDate(today); }}>Today</button><button className="icon-btn" type="button" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))} aria-label="Next month"><ChevronRight size={17}/></button></div><h2>{month.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}</h2><span className="schedule-summary"><CalendarDays size={15}/>{visits.length} visits</span></div>
       <div className="calendar-weekdays">{weekdays.map(day => <span key={day}>{day}</span>)}</div>

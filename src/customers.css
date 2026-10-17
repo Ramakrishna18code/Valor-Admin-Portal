@@ -1,0 +1,34 @@
+.customer-toolbar,.customer-profile-heading,.customer-save-bar{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.customer-profile-heading{padding:24px 0;border-bottom:1px solid #dce5ef;margin-bottom:24px}
+.customer-profile-heading h2{margin:8px 0;font-size:28px}
+.customer-profile-heading p{margin:0}
+.customer-details-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;margin-bottom:28px}
+.customer-info-section{min-width:0;border:1px solid #dce5ef;border-radius:12px;padding:20px;background:#fbfcfe}
+.customer-info-section:last-child{grid-column:1/-1}
+.customer-info-section h3{margin:0 0 20px;font-size:16px}
+.customer-detail .customer-info-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;margin:0}
+.customer-info-grid>div{min-width:0}
+.customer-info-grid dt{font-size:12px;font-weight:600;color:#617588;margin-bottom:7px}
+.customer-info-grid dd{font-size:14px;line-height:1.5;font-weight:500;white-space:pre-wrap}
+.customer-detail .kpi-grid{grid-template-columns:repeat(3,minmax(0,1fr));margin-bottom:28px}
+.customer-form-heading{margin-bottom:28px}
+.customer-form-heading h2{margin:8px 0}
+.customer-editor .customer-form-section{min-width:0;margin:0 0 24px;padding:20px;border:1px solid #dce5ef;border-radius:12px}
+.customer-form-section>legend{padding:0 8px;font-size:16px;font-weight:700;color:#12355a}
+.customer-form-section>p{margin:0 0 16px}
+.customer-form-section>p:last-child{margin:12px 0 0}
+.customer-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+.customer-field-wide{grid-column:1/-1}
+.customer-editor .customer-fields label{font-size:13px}
+.customer-editor input,.customer-editor textarea{width:100%;box-sizing:border-box}
+.customer-editor textarea{resize:vertical}
+.customer-editor input[readonly]{background:#f2f5f8;color:#617588}
+.customer-editor .customer-lift-choice{border:0;padding:0;margin:0;grid-column:1/-1}
+.customer-lift-choice legend{font-size:13px;font-weight:600;margin-bottom:12px}
+.customer-lift-choice>div{display:flex;gap:24px}
+.customer-editor .customer-lift-choice label{flex-direction:row;align-items:center;gap:8px}
+.customer-editor .customer-lift-choice input{width:18px;height:18px;min-height:0;margin:0;accent-color:#0755ad}
+.customer-save-bar{border-top:1px solid #dce5ef;padding-top:20px;margin-top:24px}
+.customer-save-bar>span{font-size:13px;color:#617588}
+.customer-save-notice{padding:14px 18px;border:1px solid #bde4d4;border-radius:10px;background:#edf9f3;color:#086947}
+@media(max-width:700px){.customer-details-grid,.customer-fields,.customer-detail .customer-info-grid{grid-template-columns:1fr}.customer-detail .kpi-grid{grid-template-columns:1fr}.customer-toolbar{align-items:stretch}.customer-toolbar>.page-actions{flex:1;justify-content:flex-end}.customer-info-section,.customer-editor .customer-form-section{padding:16px}.customer-save-bar{align-items:stretch}.customer-save-bar .page-actions{width:100%;justify-content:flex-end}}

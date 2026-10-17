@@ -5,6 +5,8 @@ import { ErrorState, displayValue } from './assetModules.jsx';
 import { AvailabilityDot, DataTable, PagerButtons, PriorityChip, StatusChip, detailPageSize } from './uiPatterns.jsx';
 import './workflow.css';
 
+import { readableDate } from './recordDetails.jsx';
+
 export function Pager({ data, page, onPage, busy }) {
   return <PagerButtons page={page} totalPages={data?.totalPages} totalItems={data?.totalElements} onPage={onPage} busy={busy} />;
 }
@@ -18,7 +20,7 @@ export function DirectoryPicker({ api, kind, selected, onSelect, disabled = fals
     <label>Search {kind}<input maxLength={254} value={q} onChange={event => { setData(null); setQ(event.target.value); setPage(0); }} placeholder="Search by name, email or supported directory fields" /></label>
     {selected && <p role="status">Selected: {selected.fullName || selected.employeeId || selected.email} <button type="button" className="secondary-btn" onClick={() => onSelect(null)}>Clear selection</button></p>}
     <ErrorState error={error} />{error && <button type="button" className="secondary-btn" onClick={() => setRevision(value => value + 1)}>Retry directory</button>}
-    {needsSearch ? <p className="directory-hint">Search to find a customer.</p> : loading ? <p role="status">Loading directory...</p> : data?.items.length === 0 ? <p>No matching {kind}.</p> : kind === 'technicians' ? <select value={selected?.technicianProfileId || ''} onChange={event => onSelect(data.items.find(row => String(row.technicianProfileId) === event.target.value) || null)}><option value="">Select technician</option>{data.items.map(row => <option key={row.technicianProfileId} value={row.technicianProfileId}>{row.fullName || row.employeeId || row.email || `Technician #${row.technicianProfileId}`}</option>)}</select> : <ul>{data?.items.map(row => <li key={row.customerProfileId ?? row.technicianProfileId}><button type="button" className="secondary-btn" disabled={!row.active || (kind === 'customers' && row.status !== 'ACTIVE')} onClick={() => onSelect(row)}>{row.fullName || row.email || `Customer #${row.customerProfileId}`}</button></li>)}</ul>}
+    {needsSearch ? <p className="directory-hint">Search to find a customer.</p> : loading ? <p role="status">Loading directory...</p> : data?.items.length === 0 ? <p>No matching {kind}.</p> : kind === 'technicians' ? <select aria-label="Select technician" value={selected?.technicianProfileId || ''} onChange={event => onSelect(data.items.find(row => String(row.technicianProfileId) === event.target.value) || null)}><option value="">Select technician</option>{data.items.map(row => <option key={row.technicianProfileId} value={row.technicianProfileId}>{row.fullName || row.employeeId || row.email || `Technician #${row.technicianProfileId}`}</option>)}</select> : <ul>{data?.items.map(row => <li key={row.customerProfileId ?? row.technicianProfileId}><button type="button" className="secondary-btn" disabled={!row.active || (kind === 'customers' && row.status !== 'ACTIVE')} onClick={() => onSelect(row)}>{row.fullName || row.email || `Customer #${row.customerProfileId}`}</button></li>)}</ul>}
     {kind === 'technicians' && selected && <p className="directory-availability"><AvailabilityDot value={selected.availabilityStatus} /></p>}
     <Pager data={data} page={page} onPage={changePage} busy={loading || disabled} /></fieldset>;
 }
@@ -61,7 +63,7 @@ const present = value => value !== null && value !== undefined && String(value).
 const detailValue = value => typeof value === 'boolean' ? (value ? 'Yes' : 'No') : String(value);
 function DetailSection({ title, rows }) {
   const visible = rows.filter(([, value]) => present(value));
-  return visible.length ? <section className="request-detail-section"><div className="panel-heading"><div><h3>{title}</h3></div></div><dl className="request-detail-list">{visible.map(([label, value]) => <React.Fragment key={label}><dt>{label}</dt><dd>{value}</dd></React.Fragment>)}</dl></section> : null;
+  return visible.length ? <section className="request-detail-section"><div className="panel-heading"><div><h3>{title}</h3></div></div><dl className="request-detail-list">{visible.map(([label, value]) => <div className={['Address','Description','Customer remarks','Internal notes','Notes'].includes(label)?'record-wide':undefined} key={label}><dt>{label}</dt><dd>{['Requested','Assigned','Accepted','Completed'].includes(label)?readableDate(value):value}</dd></div>)}</dl></section> : null;
 }
 
 function RequestOverview({ request }) {
@@ -75,17 +77,17 @@ export function RequestDetail({ detail, showOverview = true, attachments = [], f
   const request = detail.request;
   return <>
     {showOverview ? <RequestOverview request={request} /> : null}
-    <DetailSection title="Customer and site" rows={[
+    <div className="request-sections-grid"><DetailSection title="Customer and site" rows={[
       ['Customer', request.customerName], ['Customer profile', request.customerProfileId], ['Building', request.buildingName], ['Address', request.buildingAddress], ['Lift', request.liftName], ['Lift number', request.liftNumber],
     ]} />
     <DetailSection title="Service details" rows={[
-      ['Service type', request.serviceType], ['Issue category', request.issueCategory], ['Description', request.description], ['Customer remarks', request.customerRemarks], ['Requested', request.serviceRequestedAt], ['Preferred visit', [request.preferredVisitDate, request.preferredTimeSlot].filter(present).join(' · ')], ['Estimated duration', present(request.estimatedCompletionMinutes) ? `${request.estimatedCompletionMinutes} minutes` : null],
+      ['Service type', request.serviceType?.replaceAll('_',' ')], ['Issue category', request.issueCategory], ['Description', request.description], ['Customer remarks', request.customerRemarks], ['Requested', request.serviceRequestedAt], ['Preferred visit', [request.preferredVisitDate?readableDate(request.preferredVisitDate):null, request.preferredTimeSlot].filter(present).join(' · ')], ['Estimated duration', present(request.estimatedCompletionMinutes) ? `${request.estimatedCompletionMinutes} minutes` : null],
     ]} />
     <DetailSection title="Operations" rows={[['Internal notes', request.internalAdminNotes], ['Completed', request.completedAt]]} />
     {detail.activeAssignment ? <DetailSection title="Technician and assignment" rows={[
       ['Technician', detail.activeAssignment.technicianName || request.technicianName], ['Assignment status', detail.activeAssignment.status], ['Assigned', detail.activeAssignment.assignedAt], ['Accepted', detail.activeAssignment.acceptedAt], ['Notes', detail.activeAssignment.notes],
     ]} /> : null}
-    <PagedDetailTable title="Status history" empty="No status history returned." rows={detail.history} columns={[{key:'fromStatus',label:'From',render:r=>r.fromStatus ? <StatusChip value={r.fromStatus}/> : 'Created'},{key:'toStatus',label:'To',render:r=><StatusChip value={r.toStatus}/>},{key:'changedAt',label:'Changed',render:r=>displayValue(r.changedAt)},{key:'notes',label:'Notes',render:r=>displayValue(r.notes)}]} />
+    </div><PagedDetailTable title="Status history" empty="No status history returned." rows={detail.history} columns={[{key:'fromStatus',label:'From',render:r=>r.fromStatus ? <StatusChip value={r.fromStatus}/> : 'Created'},{key:'toStatus',label:'To',render:r=><StatusChip value={r.toStatus}/>},{key:'changedAt',label:'Changed',render:r=>readableDate(r.changedAt)},{key:'notes',label:'Notes',render:r=>displayValue(r.notes)}]} />
     <PagedDetailTable title="Service report" empty="No service report returned." rows={detail.report ? [detail.report] : []} columns={[{key:'diagnosis',label:'Diagnosis'},{key:'workPerformed',label:'Work performed'},{key:'testingResult',label:'Testing'},{key:'completionNotes',label:'Completion notes'},{key:'createdAt',label:'Created',render:r=>displayValue(r.createdAt)}]} />
     <RequestEngagement attachments={attachments} feedback={feedback} error={engagementError} loading={engagementLoading} busy={engagementBusy} onOpenAttachment={onOpenAttachment} onDeleteAttachment={onDeleteAttachment} />
   </>;

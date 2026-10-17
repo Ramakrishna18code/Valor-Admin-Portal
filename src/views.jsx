@@ -1,4 +1,5 @@
 import React from 'react';
+
 import { Activity, AlertTriangle, Building2, ClipboardList, CreditCard, Layers3, RefreshCw, ShieldCheck, Users, UserRound, Wrench } from 'lucide-react';
 import { isAdmin, summaryFields } from './api/services.js';
 export function ProtectedContent({user, children}) { return isAdmin(user) ? children : <section className="permission-page" role="alert"><ShieldCheck size={32}/><h1>Permission denied</h1><p>Sign in with an administrator account to access the Valor operations workspace.</p></section>; }
